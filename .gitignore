@@ -1,0 +1,6 @@
+node_modules/
+.next/
+backend/data/
+backend/backups/
+.env
+.env.local

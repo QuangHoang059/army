@@ -1,0 +1,15 @@
+{
+  "name": "army-qr-weapons",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev": "concurrently -n be,fe -c green,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix frontend run build",
+    "start": "concurrently -n be,fe -c green,cyan \"npm --prefix backend run start\" \"npm --prefix frontend run start\"",
+    "seed": "npm --prefix backend run seed",
+    "db:clear": "npm --prefix backend run db:clear --"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

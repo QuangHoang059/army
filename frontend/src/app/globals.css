@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Oswald:wght@600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --green: #14532d;
+  --green-2: #166534;
+  --green-soft: #dcfce7;
+  --red: #b91c1c;
+  --red-soft: #fee2e2;
+  --amber: #b45309;
+  --amber-soft: #fef3c7;
+  --surface: #ffffff;
+  --bg: #f1f5f1;
+  --ink: #17251b;
+  --muted: #5f6f63;
+  --line: #d7e0d7;
+  --gold: #eab308;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #16241a;
+    --bg: #0c1710;
+    --ink: #eef5ef;
+    --muted: #a9bcad;
+    --line: #2d4133;
+    --green-soft: #173d28;
+    --red-soft: #3d1717;
+    --amber-soft: #3d2c12;
+  }
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input,
+  select,
+  textarea {
+    outline: none;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--green) !important;
+    box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.14);
+  }
+}
+
+.font-display {
+  font-family: 'Oswald', 'Be Vietnam Pro', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.tab-scroll {
+  scrollbar-width: thin;
+}
+
+.qr-box {
+  background: #fff;
+  padding: 6px;
+  border: 3px solid #111827;
+  line-height: 0;
+}
+
+@media print {
+  header,
+  aside,
+  .no-print {
+    display: none !important;
+  }
+}
