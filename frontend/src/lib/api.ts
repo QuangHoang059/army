@@ -1,4 +1,4 @@
-import type { Alerts, AuditEntry, Backup, Loan, Maintenance, Role, Stats, User, Weapon, WeaponDetail, WeaponType } from './types';
+import type { Alerts, AuditEntry, Backup, Loan, Maintenance, PublicWeapon, Report, Role, Stats, User, Weapon, WeaponDetail, WeaponType } from './types';
 
 /** Phát ra khi API trả 401 (phiên hết hạn / bị khoá) → AuthProvider đưa về trang đăng nhập. */
 export const AUTH_EXPIRED_EVENT = 'auth:expired';
@@ -46,6 +46,12 @@ export const api = {
   renameWeaponType: (id: number, name: string) => put<WeaponType>(`/weapon-types/${id}`, { name }),
   deleteWeaponType: (id: number) => del(`/weapon-types/${id}`),
 
+  // ---- Danh mục đơn vị quản lý (xem: mọi người; sửa: admin) ----
+  units: () => request<WeaponType[]>('/units'),
+  createUnit: (name: string) => post<WeaponType>('/units', { name }),
+  renameUnit: (id: number, name: string) => put<WeaponType>(`/units/${id}`, { name }),
+  deleteUnit: (id: number) => del(`/units/${id}`),
+
   stats: () => request<Stats>('/stats'),
   alerts: () => request<Alerts>('/alerts'),
 
@@ -60,6 +66,22 @@ export const api = {
   deleteWeapon: (id: number) => request<void>(`/weapons/${id}`, { method: 'DELETE' }),
   retireWeapon: (id: number, reason: string) => post<Weapon>(`/weapons/${id}/retire`, { reason }),
   restoreWeapon: (id: number) => post<Weapon>(`/weapons/${id}/restore`, {}),
+  rotatePublicToken: (id: number) => post<Weapon>(`/weapons/${id}/public-token`, {}),
+  report: (period: 'week' | 'month', date: string) => request<Report>(`/reports?period=${period}&date=${date}`),
+  /** Tải file Excel báo cáo về máy */
+  exportReport: async (period: 'week' | 'month', date: string) => {
+    const res = await fetch(`/api/reports/export.xlsx?period=${period}&date=${date}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || `Không xuất được file (${res.status})`);
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'BaoCao_VKTB.xlsx';
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return name;
+  },
+  publicWeapon: (token: string) => request<PublicWeapon>(`/public/w/${encodeURIComponent(token)}`),
   uploadPhoto: (id: number, img: Blob) =>
     request<Weapon>(`/weapons/${id}/photo`, { method: 'PUT', body: img, headers: { 'content-type': img.type || 'image/jpeg' } }),
   deletePhoto: (id: number) => request<Weapon>(`/weapons/${id}/photo`, { method: 'DELETE' }),

@@ -18,6 +18,8 @@ export interface Weapon {
   retired?: boolean;
   retiredAt?: string | null;
   retiredReason?: string | null;
+  /** Mã bí mật trong link tem QR: <site>/w/<publicToken> */
+  publicToken?: string | null;
 }
 
 export interface Maintenance {
@@ -49,6 +51,58 @@ export interface Loan {
   returnedBy?: string | null;
 }
 
+export interface ReportGroup {
+  name: string;
+  total: number;
+  /** Số lượng theo từng tình trạng, cùng thứ tự với Report.statuses */
+  byStatus: number[];
+}
+
+export interface Report {
+  period: 'week' | 'month';
+  from: string;
+  to: string;
+  label: string;
+  generatedAt: string;
+  statuses: string[];
+  total: number;
+  byType: ReportGroup[];
+  byUnit: ReportGroup[];
+  activity: {
+    maintenance: number;
+    maintenanceByResult: { result: string; count: number }[];
+    borrowed: number;
+    returned: number;
+    added: number;
+    retired: number;
+  };
+  overdue: number;
+  soon: number;
+  due: {
+    code: string; name: string; serial: string; type: string; unit: string; responsible: string; status: string;
+    last_maint: string; next_maint: string; daysLeft: number; level: 'Quá hạn' | 'Sắp đến hạn' | 'Trong hạn';
+  }[];
+  unreturned: {
+    code: string; name: string; serial: string; type: string; unit: string; responsible: string;
+    borrower: string; purpose: string; borrow_at: string; recorded_by: string | null; hoursOut: number;
+  }[];
+}
+
+/** Thông tin hiện trên trang công khai khi quét tem QR (không cần đăng nhập). */
+export interface PublicWeapon {
+  code: string;
+  name: string;
+  type: string;
+  serial: string;
+  unit: string;
+  responsible: string;
+  status: string;
+  last: string;
+  next: string;
+  retired: boolean;
+  hasPhoto: boolean;
+}
+
 export interface WeaponDetail extends Weapon {
   maintenance: Maintenance[];
   loans: Loan[];
@@ -72,7 +126,6 @@ export interface Alerts {
   soon: Weapon[];
 }
 
-export const UNITS = ['Trung đội 1', 'Trung đội 2', 'Trung đội 3', 'Khối Đại đội'];
 export const STATUSES: WeaponStatus[] = ['Tốt', 'Đang bảo dưỡng', 'Hỏng', 'Đang mượn'];
 export const MAINT_RESULTS = ['Đạt', 'Đang theo dõi', 'Chưa đạt'];
 export const LOAN_PURPOSES = ['Gác', 'Huấn luyện', 'Diễn tập', 'Nhiệm vụ khác'];

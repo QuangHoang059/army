@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "army-qr-weapons": "file:..",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.468.0",
     "next": "^15.5.4",
     "qrcode.react": "^4.2.0",

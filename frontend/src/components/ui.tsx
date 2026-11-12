@@ -23,7 +23,7 @@ export function StatusBadge({ s }: { s: WeaponStatus | string }) {
   );
 }
 
-type QrInfo = Pick<Weapon, 'code' | 'name' | 'serial' | 'type' | 'unit' | 'responsible' | 'photo'>;
+type QrInfo = Pick<Weapon, 'code' | 'name' | 'serial' | 'type' | 'unit' | 'responsible' | 'photo' | 'publicToken'>;
 
 /**
  * Địa chỉ gốc in vào link trên tem QR.
@@ -38,21 +38,14 @@ function useSiteUrl() {
   return url.replace(/\/+$/, '');
 }
 
-/** Nội dung chữ ghi trong mã QR — quét bằng camera điện thoại thường cũng đọc được, không cần mạng.
- *  Dòng đầu luôn là mã QRCB-xxx để trang Quét QR của app tra cứu được.
- *  Nếu vũ khí có ảnh: thêm dòng link ảnh (link cố định theo mã, đổi ảnh không cần in lại tem). */
+/** Nội dung mã QR = link trang công khai <NEXT_PUBLIC_SITE_URL>/w/<mã bí mật>.
+ *  Quét bằng camera điện thoại → mở trang CHỈ có thông tin vũ khí đó, không cần đăng nhập.
+ *  Mã bí mật ngẫu nhiên → không dò ra được vũ khí khác. Trang Quét QR trong app cũng đọc được link này.
+ *  Link không phụ thuộc thông tin vũ khí → đổi đơn vị / người quản lý / ảnh / mã QRCB không cần in lại tem. */
 export const qrText = (w: QrInfo, siteUrl = '') =>
-  [
-    `Mã: ${w.code}`,
-    `Tên: ${w.name}`,
-    `Số hiệu: ${w.serial}`,
-    `Loại: ${w.type}`,
-    `Đơn vị: ${w.unit}`,
-    `Người quản lý: ${w.responsible}`,
-    ...(w.photo && siteUrl ? [`Ảnh: ${siteUrl}/api/weapons/${encodeURIComponent(w.code)}/photo`] : []),
-  ].join('\n');
+  siteUrl && w.publicToken ? `${siteUrl}/w/${w.publicToken}` : w.code;
 
-/** Mã QR thật, chứa thông tin vũ khí dạng chữ (thay đổi đơn vị / người quản lý thì cần in lại tem). */
+/** Mã QR thật, chứa link tới trang chi tiết vũ khí. */
 export function QrCode({ w, size = 132 }: { w: QrInfo; size?: number }) {
   const siteUrl = useSiteUrl();
   return (

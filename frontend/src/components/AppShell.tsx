@@ -5,7 +5,9 @@ import { usePathname } from 'next/navigation';
 import {
   ArrowLeftRight,
   CheckCircle2,
+  Building2,
   Database,
+  FileSpreadsheet,
   HardDrive,
   History,
   KeyRound,
@@ -33,7 +35,9 @@ const NAV = [
   { href: '/maintenance', label: 'Sổ Bảo dưỡng', icon: Wrench },
   { href: '/loans', label: 'Bàn giao / Mượn - Trả', icon: ArrowLeftRight },
   { href: '/alerts', label: 'Cảnh báo', icon: TriangleAlert },
+  { href: '/reports', label: 'Báo cáo - Thống kê', icon: FileSpreadsheet },
   { href: '/admin/types', label: 'Loại trang bị', icon: Tags, admin: true },
+  { href: '/admin/units', label: 'Đơn vị quản lý', icon: Building2, admin: true },
   { href: '/admin/users', label: 'Tài khoản', icon: UserCog, admin: true },
   { href: '/admin/audit', label: 'Nhật ký', icon: History, admin: true },
   { href: '/admin/backups', label: 'Sao lưu', icon: HardDrive, admin: true },
@@ -101,8 +105,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1280px] gap-4 px-3 py-4 sm:px-5 lg:grid-cols-[240px_1fr]">
-        <aside className="lg:sticky lg:top-[92px] lg:self-start">
+      <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)] gap-4 px-3 py-4 sm:px-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:sticky lg:top-[92px] lg:self-start">
           <nav className="tab-scroll flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
             {NAV.filter((n) => !n.admin || isAdmin).map(({ href, label, icon: Icon }) => {
               const active = href === '/' ? pathname === '/' : pathname.startsWith(href);

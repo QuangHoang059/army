@@ -1,8 +1,8 @@
 import express, { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, UPLOAD_DIR, removePhoto, findWeaponType, weaponTypeNames, mapWeapon, mapMaint, mapLoan, MAINT_SELECT, LOAN_SELECT } from '../db.js';
-import { MAINT_INTERVAL_DAYS, UNITS, WEAPON_STATUSES } from '../constants.js';
+import { db, UPLOAD_DIR, removePhoto, findWeaponType, weaponTypeNames, findUnitRow, unitNames, mapWeapon, mapMaint, mapLoan, MAINT_SELECT, LOAN_SELECT } from '../db.js';
+import { MAINT_INTERVAL_DAYS, WEAPON_STATUSES } from '../constants.js';
 import { adminForWrites, loginRedirect } from '../auth.js';
 import { audit, diff } from '../audit.js';
 import { addDays, todayStr, isDate, HttpError, str, ah } from '../utils.js';
@@ -14,7 +14,9 @@ export const CODE_RE = /^QRCB-\d{3,}$/;
 // Tìm theo mã QR / số hiệu trước (số hiệu có thể toàn chữ số, vd 200174), không thấy mới thử theo id.
 const findByIdOrCode = (key) => {
   const k = String(key).trim();
-  const w = db.prepare('SELECT * FROM weapons WHERE upper(code) = upper(?) OR upper(serial) = upper(?)').get(k, k);
+  const w = db
+    .prepare('SELECT * FROM weapons WHERE upper(code) = upper(?) OR upper(serial) = upper(?) OR public_token = lower(?)')
+    .get(k, k, k);
   if (w || !/^\d+$/.test(k)) return w;
   return db.prepare('SELECT * FROM weapons WHERE id = ?').get(Number(k));
 };
@@ -31,7 +33,7 @@ r.get('/:key/photo', loginRedirect, ah((req, res) => {
 // Còn lại: xem cần đăng nhập, thêm / sửa / xoá / đổi ảnh chỉ admin.
 r.use(adminForWrites);
 
-function validateWeapon(body, { partial = false } = {}) {
+function validateWeapon(body, { partial = false, currentUnit } = {}) {
   const out = {};
   const fields = ['code', 'name', 'serial', 'type', 'unit', 'responsible', 'status', 'last', 'next'];
   for (const f of fields) if (body[f] !== undefined) out[f] = str(body[f]);
@@ -45,7 +47,11 @@ function validateWeapon(body, { partial = false } = {}) {
     out.type = findWeaponType(out.type); // chuẩn hoá theo đúng tên trong danh mục
     if (!out.type) throw new HttpError(400, 'Loại vũ khí không có trong danh mục. Admin thêm loại ở trang "Loại trang bị".');
   }
-  if (out.unit !== undefined && !UNITS.includes(out.unit)) throw new HttpError(400, 'Đơn vị không hợp lệ.');
+  // Đơn vị phải có trong danh mục; riêng khi sửa thì cho giữ nguyên đơn vị cũ (kể cả đã bị xoá khỏi danh mục)
+  if (out.unit !== undefined && out.unit !== currentUnit) {
+    out.unit = findUnitRow(out.unit)?.name;
+    if (!out.unit) throw new HttpError(400, 'Đơn vị không có trong danh mục. Admin thêm đơn vị ở trang "Đơn vị quản lý".');
+  }
   if (out.status !== undefined && !WEAPON_STATUSES.includes(out.status)) throw new HttpError(400, 'Tình trạng không hợp lệ.');
 
   if (out.last !== undefined && !isDate(out.last)) throw new HttpError(400, 'Ngày bảo dưỡng gần nhất không hợp lệ.');
@@ -123,6 +129,7 @@ r.get('/:key', ah((req, res) => {
 r.post('/', ah((req, res) => {
   const v = validateWeapon(req.body || {});
   if (v.status === 'Đang mượn') throw new HttpError(409, NO_MANUAL_LOAN);
+  if (!v.unit && !unitNames().length) throw new HttpError(400, 'Chưa có đơn vị nào. Admin thêm đơn vị ở trang "Đơn vị quản lý".');
 
   const last = v.last || todayStr();
   const row = {
@@ -130,7 +137,7 @@ r.post('/', ah((req, res) => {
     name: v.name,
     serial: v.serial,
     type: v.type || weaponTypeNames()[0] || 'Khác',
-    unit: v.unit || 'Trung đội 1',
+    unit: v.unit || unitNames()[0],
     responsible: v.responsible,
     status: v.status || 'Tốt',
     last,
@@ -154,7 +161,7 @@ r.put('/:id', ah((req, res) => {
   const cur = findByIdOrCode(req.params.id);
   if (!cur) throw new HttpError(404, 'Không tìm thấy vũ khí.');
   assertActive(cur);
-  const v = validateWeapon(req.body || {}, { partial: true });
+  const v = validateWeapon(req.body || {}, { partial: true, currentUnit: cur.unit });
   if (v.status !== undefined && v.status !== cur.status) {
     if (cur.status === 'Đang mượn')
       throw new HttpError(409, `${cur.name} (${cur.serial}) đang được mượn — ghi trả ở trang Bàn giao / Mượn - Trả để đổi tình trạng.`);
@@ -216,6 +223,17 @@ r.post('/:id/restore', ah((req, res) => {
   db.transaction(() => {
     db.prepare("UPDATE weapons SET retired_at = NULL, retired_reason = NULL, updated_at = datetime('now') WHERE id = ?").run(cur.id);
     audit(req.user, 'weapon.restore', cur.code, `Khôi phục ${cur.name} — ${cur.serial} trở lại sử dụng`);
+  })();
+  res.json(mapWeapon(db.prepare('SELECT * FROM weapons WHERE id = ?').get(cur.id)));
+}));
+
+// POST /api/weapons/:id/public-token — cấp link tem mới (tem cũ bị mất / lộ → link cũ hết hiệu lực)
+r.post('/:id/public-token', ah((req, res) => {
+  const cur = findByIdOrCode(req.params.id);
+  if (!cur) throw new HttpError(404, 'Không tìm thấy vũ khí.');
+  db.transaction(() => {
+    db.prepare("UPDATE weapons SET public_token = lower(hex(randomblob(12))), updated_at = datetime('now') WHERE id = ?").run(cur.id);
+    audit(req.user, 'weapon.update', cur.code, `${cur.code}: cấp link tem QR mới (link cũ hết hiệu lực)`);
   })();
   res.json(mapWeapon(db.prepare('SELECT * FROM weapons WHERE id = ?').get(cur.id)));
 }));

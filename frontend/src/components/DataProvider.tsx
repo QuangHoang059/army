@@ -16,6 +16,8 @@ interface DataCtx {
   stats: Stats | null;
   /** Danh mục loại vũ khí (admin quản lý ở trang Loại trang bị) */
   types: WeaponType[];
+  /** Danh mục đơn vị quản lý (admin quản lý ở trang Đơn vị quản lý); count = số vũ khí */
+  units: WeaponType[];
   alerts: Alerts;
   loading: boolean;
   error: string | null;
@@ -35,6 +37,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [types, setTypes] = useState<WeaponType[]>([]);
+  const [units, setUnits] = useState<WeaponType[]>([]);
   const [alerts, setAlerts] = useState<Alerts>({ overdue: [], soon: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +45,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [flash, setFlash] = useState<Flash | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [w, m, l, s, a, t] = await Promise.all([
+    const [w, m, l, s, a, t, u] = await Promise.all([
       api.weapons(),
       api.maintenance(),
       api.loans(),
       api.stats(),
       api.alerts(),
       api.weaponTypes(),
+      api.units(),
     ]);
     setWeapons(w);
     setMaintenance(m);
@@ -56,6 +60,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setStats(s);
     setAlerts(a);
     setTypes(t);
+    setUnits(u);
   }, []);
 
   const reload = useCallback(async () => {
@@ -93,7 +98,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ weapons, maintenance, loans, stats, types, alerts, loading, error, busy, flash, reload, setFlash, run }}
+      value={{ weapons, maintenance, loans, stats, types, units, alerts, loading, error, busy, flash, reload, setFlash, run }}
     >
       {children}
     </Ctx.Provider>

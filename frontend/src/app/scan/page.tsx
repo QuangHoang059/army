@@ -3,7 +3,18 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Camera, CameraOff, Pencil, Printer, QrCode as QrIcon, ScanLine, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  ArchiveRestore,
+  Camera,
+  CameraOff,
+  Pencil,
+  Printer,
+  QrCode as QrIcon,
+  RefreshCw,
+  ScanLine,
+  Trash2,
+} from 'lucide-react';
 import { useData } from '@/components/DataProvider';
 import { useAuth } from '@/components/AuthProvider';
 import { PhotoPicker } from '@/components/PhotoPicker';
@@ -30,8 +41,19 @@ function Scan() {
   const { weapons, setFlash, run, busy } = useData();
   const [input, setInput] = useState(code);
   const [detail, setDetail] = useState<WeaponDetail | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
 
-  const select = useCallback((c: string) => router.replace(c ? `/scan?code=${encodeURIComponent(c)}` : '/scan'), [router]);
+  // Điện thoại: thẻ thông tin nằm dưới khung camera → tự cuộn xuống khi quét ra vũ khí
+  useEffect(() => {
+    if (detail?.id && window.innerWidth < 1024)
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [detail?.id]);
+
+  const select = useCallback(
+    // scroll: false → không kéo trang về đầu (để còn cuộn xuống thẻ thông tin)
+    (c: string) => router.replace(c ? `/scan?code=${encodeURIComponent(c)}` : '/scan', { scroll: false }),
+    [router],
+  );
 
   // Tải thẻ chi tiết mỗi khi mã thay đổi hoặc dữ liệu được cập nhật
   useEffect(() => {
@@ -42,7 +64,15 @@ function Scan() {
     let alive = true;
     api
       .weapon(code)
-      .then((d) => alive && setDetail(d))
+      .then((d) => {
+        if (!alive) return;
+        setDetail(d);
+        // Quét tem có link /w/<mã bí mật> → hiện lại mã QRCB-xxx trên ô nhập / thanh địa chỉ
+        if (/^[0-9a-f]{24}$/.test(code)) {
+          setInput(d.code);
+          select(d.code);
+        }
+      })
       .catch((e) => {
         if (!alive) return;
         setDetail(null);
@@ -51,12 +81,14 @@ function Scan() {
     return () => {
       alive = false;
     };
-  }, [code, weapons, setFlash]);
+  }, [code, weapons, setFlash, select]);
 
   const scan = (raw: string) => {
     // Mã QR chứa nhiều dòng thông tin → lấy mã QRCB-xxx (hoặc số hiệu VN-xxx) trong đó
     const t = raw.trim().toUpperCase();
-    const c = t.match(/QRCB-\d+/)?.[0] || t.match(/VN-\d+/)?.[0] || t;
+    // Tem mới: link .../w/<mã bí mật 24 ký tự> — máy chủ tra được theo mã này
+    const c =
+      t.match(/\/W\/([0-9A-F]{24})\b/)?.[1].toLowerCase() || t.match(/QRCB-\d+/)?.[0] || t.match(/VN-\d+/)?.[0] || t;
     if (!c) return;
     setInput(c);
     setFlash(null);
@@ -67,7 +99,7 @@ function Scan() {
     <section>
       <PageTitle
         title="Quét QR"
-        sub="Dùng camera (nếu trình duyệt hỗ trợ) hoặc nhập mã QRCB-xxx / số hiệu VN-xxx, hoặc chọn vũ khí trong danh sách."
+        sub="Dùng camera điện thoại hoặc nhập mã QRCB-xxx / số hiệu VN-xxx, hoặc chọn vũ khí trong danh sách."
       />
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.3fr]">
         <div className="rounded-2xl border-4 border-dashed border-[var(--green)] bg-black p-4 text-center text-white">
@@ -113,44 +145,66 @@ function Scan() {
           </div>
         </div>
 
-        {detail ? (
-          <WeaponCard
-            w={detail}
-            busy={busy}
-            onStatus={(s) =>
-              run(() => api.updateWeapon(detail.id, { status: s }), `Đã cập nhật tình trạng ${detail.serial}: ${s}.`)
-            }
-            onPhoto={(img) => run(() => api.uploadPhoto(detail.id, img), `Đã cập nhật ảnh ${detail.code}.`)}
-            onRetire={() => {
-              const reason = prompt(
-                `Thanh lý / ngừng sử dụng ${detail.name} — ${detail.serial}.\nVũ khí sẽ ẩn khỏi danh sách nhưng GIỮ lịch sử (khôi phục lại được).\n\nLý do (bắt buộc):`,
-              )?.trim();
-              if (reason === undefined) return;
-              if (!reason) return setFlash({ kind: 'error', text: 'Cần nhập lý do thanh lý.' });
-              run(() => api.retireWeapon(detail.id, reason), `Đã thanh lý ${detail.serial}.`);
-            }}
-            onRestore={() => {
-              if (confirm(`Khôi phục ${detail.name} — ${detail.serial} trở lại sử dụng?`))
-                run(() => api.restoreWeapon(detail.id), `Đã khôi phục ${detail.serial}.`);
-            }}
-            onDelete={async () => {
-              if (!confirm(`Xoá hẳn ${detail.name} — ${detail.serial}? (Vũ khí chưa có lịch sử nào — dùng khi nhập nhầm.)`)) return;
-              const ok = await run(() => api.deleteWeapon(detail.id).then(() => true), `Đã xoá ${detail.serial}.`);
-              if (ok) {
-                setInput('');
-                select('');
+        <div ref={resultRef} className="min-w-0 scroll-mt-[150px] lg:scroll-mt-28">
+          {detail ? (
+            <WeaponCard
+              w={detail}
+              busy={busy}
+              onStatus={(s) =>
+                run(() => api.updateWeapon(detail.id, { status: s }), `Đã cập nhật tình trạng ${detail.serial}: ${s}.`)
               }
-            }}
-          />
-        ) : (
-          <div className={`${card} flex items-center justify-center p-8 text-center`}>
-            <div>
-              <QrIcon className="mx-auto text-[var(--muted)]" size={42} />
-              <p className="mt-2 font-bold">Chưa có vũ khí được quét</p>
-              <p className="text-sm text-[var(--muted)]">Nhập mã hoặc chọn vũ khí để hiện thẻ thông tin chi tiết.</p>
+              onPhoto={(img) => run(() => api.uploadPhoto(detail.id, img), `Đã cập nhật ảnh ${detail.code}.`)}
+              onRetire={() => {
+                const reason = prompt(
+                  `Thanh lý / ngừng sử dụng ${detail.name} — ${detail.serial}.\nVũ khí sẽ ẩn khỏi danh sách nhưng GIỮ lịch sử (khôi phục lại được).\n\nLý do (bắt buộc):`,
+                )?.trim();
+                if (reason === undefined) return;
+                if (!reason)
+                  return setFlash({
+                    kind: 'error',
+                    text: 'Cần nhập lý do thanh lý.',
+                  });
+                run(() => api.retireWeapon(detail.id, reason), `Đã thanh lý ${detail.serial}.`);
+              }}
+              onNewLink={() => {
+                if (
+                  confirm(
+                    `Cấp link tem QR mới cho ${detail.code}?\nTem đang dán sẽ KHÔNG mở được nữa — dùng khi tem bị mất / bị chụp lộ. Cần in và dán tem mới.`,
+                  )
+                )
+                  run(
+                    () => api.rotatePublicToken(detail.id),
+                    `Đã cấp link tem mới cho ${detail.code} — hãy in lại tem.`,
+                  );
+              }}
+              onRestore={() => {
+                if (confirm(`Khôi phục ${detail.name} — ${detail.serial} trở lại sử dụng?`))
+                  run(() => api.restoreWeapon(detail.id), `Đã khôi phục ${detail.serial}.`);
+              }}
+              onDelete={async () => {
+                if (
+                  !confirm(
+                    `Xoá hẳn ${detail.name} — ${detail.serial}? (Vũ khí chưa có lịch sử nào — dùng khi nhập nhầm.)`,
+                  )
+                )
+                  return;
+                const ok = await run(() => api.deleteWeapon(detail.id).then(() => true), `Đã xoá ${detail.serial}.`);
+                if (ok) {
+                  setInput('');
+                  select('');
+                }
+              }}
+            />
+          ) : (
+            <div className={`${card} flex items-center justify-center p-8 text-center`}>
+              <div>
+                <QrIcon className="mx-auto text-[var(--muted)]" size={42} />
+                <p className="mt-2 font-bold">Chưa có vũ khí được quét</p>
+                <p className="text-sm text-[var(--muted)]">Nhập mã hoặc chọn vũ khí để hiện thẻ thông tin chi tiết.</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
@@ -162,6 +216,7 @@ function WeaponCard({
   onStatus,
   onRetire,
   onRestore,
+  onNewLink,
   onDelete,
   onPhoto,
 }: {
@@ -170,6 +225,7 @@ function WeaponCard({
   onStatus: (s: WeaponStatus) => void;
   onRetire: () => void;
   onRestore: () => void;
+  onNewLink: () => void;
   onDelete: () => void;
   onPhoto: (img: Blob) => Promise<unknown>;
 }) {
@@ -201,7 +257,13 @@ function WeaponCard({
           ) : (
             w.photo && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={w.photo} alt="Ảnh vũ khí" width={150} className="rounded-xl border object-cover" style={{ aspectRatio: '4 / 3' }} />
+              <img
+                src={w.photo}
+                alt="Ảnh vũ khí"
+                width={150}
+                className="rounded-xl border object-cover"
+                style={{ aspectRatio: '4 / 3' }}
+              />
             )
           )}
         </div>
@@ -251,7 +313,10 @@ function WeaponCard({
                 Ghi mượn / bàn giao
               </Link>
             )}
-            <button onClick={() => window.print()} className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-bold">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-bold"
+            >
               <Printer size={15} /> In tem QR
             </button>
             {isAdmin && active && (
@@ -260,6 +325,16 @@ function WeaponCard({
                 className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-bold"
               >
                 <Pencil size={15} /> Sửa thông tin
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={onNewLink}
+                disabled={busy}
+                title="Tem bị mất / lộ: đổi link, tem cũ hết hiệu lực"
+                className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-bold disabled:opacity-50"
+              >
+                <RefreshCw size={15} /> Cấp link tem mới
               </button>
             )}
           </div>
@@ -350,98 +425,185 @@ function WeaponCard({
   );
 }
 
-/* ---------- Camera QR scanner (BarcodeDetector API — Chrome/Edge Android, Chrome macOS…) ---------- */
+/* ---------- Camera QR scanner ----------
+ * Dùng BarcodeDetector nếu trình duyệt có (Chrome Android), còn lại (iPhone Safari, Firefox, Chrome Windows…)
+ * giải mã bằng thư viện jsQR → chạy được trên mọi trình duyệt có camera.
+ * Lưu ý: trình duyệt chỉ cho mở camera trên trang https:// (hoặc localhost).
+ */
 
-type Detector = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
+type Detector = {
+  detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]>;
+};
+type DetectorCtor = (new (o: { formats: string[] }) => Detector) & {
+  getSupportedFormats?: () => Promise<string[]>;
+};
+
+function camError(e: unknown): string {
+  const name = e instanceof Error ? e.name : '';
+  if (name === 'NotAllowedError' || name === 'SecurityError')
+    return 'Trình duyệt đang chặn camera. Bấm biểu tượng ổ khoá / “Aa” cạnh thanh địa chỉ → Cho phép Camera, rồi tải lại trang.';
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'Không tìm thấy camera trên thiết bị này.';
+  if (name === 'NotReadableError' || name === 'AbortError')
+    return 'Camera đang bị ứng dụng khác dùng (Zalo, Camera…). Tắt ứng dụng đó rồi bấm “Bật camera” lại.';
+  return 'Không mở được camera' + (e instanceof Error && e.message ? `: ${e.message}` : '.');
+}
 
 function CameraScanner({ onResult }: { onResult: (code: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [supported, setSupported] = useState(false);
-  const [on, setOn] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [problem, setProblem] = useState<string | null>(null); // trình duyệt không dùng được camera
   const [err, setErr] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
-    setSupported(typeof window !== 'undefined' && 'BarcodeDetector' in window && !!navigator.mediaDevices);
+    if (!window.isSecureContext)
+      setProblem('Camera chỉ hoạt động khi mở app bằng địa chỉ https:// — hãy mở bằng tên miền https của đơn vị.');
+    else if (!navigator.mediaDevices?.getUserMedia)
+      setProblem(
+        'Trình duyệt này không cho dùng camera (thường gặp khi mở link trong Zalo / Facebook). Hãy mở bằng Chrome hoặc Safari.',
+      );
   }, []);
 
   const stop = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setOn(false);
+    setStream((s) => {
+      s?.getTracks().forEach((t) => t.stop());
+      return null;
+    });
   }, []);
 
-  useEffect(() => stop, [stop]);
+  // Tắt camera khi rời trang
+  useEffect(() => () => stop(), [stop]);
 
+  // Gắn hình camera vào khung video SAU KHI khung đã hiện, rồi quét liên tục
   useEffect(() => {
-    if (!on) return;
-    let raf = 0;
+    const v = videoRef.current;
+    if (!stream || !v) return;
     let alive = true;
-    const BD = (window as unknown as { BarcodeDetector: new (o: { formats: string[] }) => Detector }).BarcodeDetector;
-    const detector = new BD({ formats: ['qr_code'] });
+    let timer = 0;
+    v.srcObject = stream;
+    v.play().catch(() => {});
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let detector: Detector | null = null;
+    let jsQR: typeof import('jsqr').default | null = null;
+
+    (async () => {
+      const BD = (window as unknown as { BarcodeDetector?: DetectorCtor }).BarcodeDetector;
+      try {
+        if (BD && (!BD.getSupportedFormats || (await BD.getSupportedFormats()).includes('qr_code')))
+          detector = new BD({ formats: ['qr_code'] });
+      } catch {
+        detector = null;
+      }
+      if (!detector) jsQR = (await import('jsqr')).default;
+    })();
+
+    const started = Date.now();
     const tick = async () => {
-      const v = videoRef.current;
-      if (!alive || !v) return;
-      if (v.readyState >= 2) {
+      if (!alive) return;
+      if (v.readyState >= 2 && v.videoWidth > 0) {
+        let text = '';
         try {
-          const codes = await detector.detect(v);
-          if (codes[0]?.rawValue) {
-            onResult(codes[0].rawValue);
-            stop();
-            return;
+          if (detector) {
+            text = (await detector.detect(v))[0]?.rawValue || '';
+          } else if (jsQR && ctx) {
+            // thu nhỏ khung hình cho nhanh
+            const scale = Math.min(1, 800 / Math.max(v.videoWidth, v.videoHeight));
+            canvas.width = Math.round(v.videoWidth * scale);
+            canvas.height = Math.round(v.videoHeight * scale);
+            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            text =
+              jsQR(img.data, img.width, img.height, {
+                inversionAttempts: 'attemptBoth',
+              })?.data || '';
           }
         } catch {
           /* bỏ qua khung hình lỗi */
         }
+        if (text && alive) {
+          navigator.vibrate?.(80);
+          onResult(text);
+          stop();
+          return;
+        }
+      } else if (Date.now() - started > 4000 && v.paused) {
+        // iPhone đôi khi không tự phát → thử phát lại
+        v.play().catch(() => {});
       }
-      raf = window.setTimeout(tick, 250) as unknown as number;
+      timer = window.setTimeout(tick, 200);
     };
     tick();
     return () => {
       alive = false;
-      clearTimeout(raf);
+      clearTimeout(timer);
+      v.srcObject = null;
     };
-  }, [on, onResult, stop]);
+  }, [stream, onResult, stop]);
 
   const start = async () => {
     setErr(null);
+    setStarting(true);
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      streamRef.current = s;
-      setOn(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-          videoRef.current.play().catch(() => {});
-        }
-      });
+      let s: MediaStream;
+      try {
+        s = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+      } catch (e) {
+        if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) throw e;
+        s = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        }); // máy không có camera sau
+      }
+      setStream(s);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không mở được camera.');
+      setErr(camError(e));
+    } finally {
+      setStarting(false);
     }
   };
 
+  const on = !!stream;
   return (
     <div>
-      {on ? (
-        <video ref={videoRef} muted playsInline className="mx-auto aspect-square w-full max-w-[300px] rounded-xl object-cover" />
-      ) : (
+      <div className={on ? 'relative mx-auto w-full max-w-[300px]' : 'hidden'}>
+        <video
+          ref={videoRef}
+          muted
+          autoPlay
+          playsInline
+          className="aspect-square w-full rounded-xl bg-black object-cover"
+        />
+        {/* khung ngắm */}
+        <div className="pointer-events-none absolute inset-[14%] rounded-xl border-4 border-[var(--gold)]/80" />
+      </div>
+      {!on && (
         <>
           <ScanLine className="mx-auto" size={44} />
           <p className="mt-2 font-bold">KHUNG CAMERA</p>
-          <p className="text-xs text-gray-300">
-            {supported ? 'Bấm “Bật camera” rồi đưa mã QR vào khung' : 'Trình duyệt này chưa hỗ trợ quét bằng camera — nhập mã bên dưới'}
-          </p>
+          <p className="text-xs text-gray-300">{problem || 'Bấm “Bật camera” rồi đưa mã QR vào khung vàng'}</p>
         </>
       )}
-      {supported && (
+      {!problem && (
         <button
           onClick={on ? stop : start}
-          className="mx-auto mt-3 flex items-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-sm font-bold"
+          disabled={starting}
+          className="mx-auto mt-3 flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2.5 text-sm font-bold disabled:opacity-50"
         >
-          {on ? <CameraOff size={16} /> : <Camera size={16} />} {on ? 'Tắt camera' : 'Bật camera'}
+          {on ? <CameraOff size={16} /> : <Camera size={16} />}{' '}
+          {on ? 'Tắt camera' : starting ? 'Đang mở camera…' : 'Bật camera'}
         </button>
       )}
-      {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+      {on && <p className="mt-2 text-xs text-gray-300">Giữ máy cách tem 10–20 cm, đủ sáng.</p>}
+      {err && <p className="mx-auto mt-2 max-w-[300px] text-xs font-semibold text-red-300">{err}</p>}
     </div>
   );
 }

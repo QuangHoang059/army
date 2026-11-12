@@ -6,14 +6,14 @@ import { useData } from '@/components/DataProvider';
 import { card, inputCls, labelCls } from '@/components/ui';
 import { api } from '@/lib/api';
 import { addDays, fmtDate } from '@/lib/date';
-import { MAINT_INTERVAL_DAYS, UNITS, type Weapon } from '@/lib/types';
+import { MAINT_INTERVAL_DAYS, type Weapon } from '@/lib/types';
 
 const FIELDS = ['name', 'type', 'serial', 'unit', 'responsible', 'code', 'last'] as const;
 type Form = Pick<Weapon, (typeof FIELDS)[number]>;
 
 /** Hộp thoại sửa thông tin vũ khí (admin). Tình trạng đổi ở thẻ chi tiết / khi ghi mượn-trả, không sửa ở đây. */
 export function WeaponEditDialog({ w, onClose }: { w: Weapon; onClose: () => void }) {
-  const { types, busy, run, setFlash } = useData();
+  const { types, units, busy, run, setFlash } = useData();
   const init = useMemo<Form>(
     () => ({ name: w.name, type: w.type, serial: w.serial, unit: w.unit, responsible: w.responsible, code: w.code, last: w.last }),
     [w],
@@ -88,9 +88,9 @@ export function WeaponEditDialog({ w, onClose }: { w: Weapon; onClose: () => voi
           <label className={labelCls}>
             Đơn vị quản lý
             <select value={form.unit} onChange={(e) => set('unit', e.target.value)} className={inputCls}>
-              {!UNITS.includes(form.unit) && <option>{form.unit}</option>}
-              {UNITS.map((u) => (
-                <option key={u}>{u}</option>
+              {!units.some((u) => u.name === form.unit) && <option>{form.unit}</option>}
+              {units.map((u) => (
+                <option key={u.id}>{u.name}</option>
               ))}
             </select>
           </label>

@@ -51,13 +51,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isLogin = pathname === '/login';
+  // Trang công khai khi quét tem QR: không cần đăng nhập, không có menu / dữ liệu khác
+  const isPublic = pathname.startsWith('/w/');
 
   useEffect(() => {
-    if (checked && !user && !isLogin) {
+    if (checked && !user && !isLogin && !isPublic) {
       const here = window.location.pathname + window.location.search;
       router.replace(`/login?next=${encodeURIComponent(here)}`);
     }
-  }, [checked, user, isLogin, router]);
+  }, [checked, user, isLogin, isPublic, router]);
 
   const login = useCallback(async (username: string, password: string) => {
     const u = await api.login(username, password);
@@ -73,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = { user, isAdmin: user?.role === 'admin', login, logout, setUser };
 
   let body: React.ReactNode;
-  if (isLogin) body = children;
+  if (isLogin || isPublic) body = children;
   else if (!checked || !user)
     body = (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-[var(--muted)]">

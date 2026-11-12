@@ -1,0 +1,44 @@
+
+Lỗi hiện tại: khi mở link trên tem (https://quanlyvukhi.anhtruyen.com/w/...), Cloudflare chuyển sang https://count-labour-ours-gym.trycloudflare.com/ và làm mất phần /w/.... Vì vậy điện thoại chỉ vào trang chủ và bị hỏi đăng nhập.
+
+Bước 1: Xoá quy tắc chuyển hướng
+
+1. Vào https://dash.cloudflare.com và đăng nhập.
+2. Bấm vào tên miền anhtruyen.com.
+3. Menu bên trái → Rules, mở lần lượt:
+   - Redirect Rules
+   - Page Rules
+   - Bulk Redirects (nếu có)
+4. Tìm quy tắc có quanlyvukhi hoặc trycloudflare, rồi Delete.
+
+Bước 2: Trỏ tên miền thẳng vào app qua tunnel
+
+1. Menu bên trái → Zero Trust. Nếu không thấy, vào thẳng https://one.dash.cloudflare.com.
+2. Networks → Tunnels.
+3. Bấm vào tunnel có trạng thái HEALTHY (tunnel đang chạy dạng service trên máy bạn) → Edit hoặc Configure.
+4. Mở tab Public Hostname → Add a public hostname, điền:
+   - Subdomain: quanlyvukhi
+   - Domain: anhtruyen.com
+   - Path: để trống
+   - Type: HTTP
+   - URL: localhost:3000
+5. Bấm Save hostname.
+
+Nếu báo lỗi "An A, AAAA, or CNAME record with that host already exists":
+- Vào lại anhtruyen.com → DNS → Records.
+- Xoá bản ghi tên quanlyvukhi.
+- Quay lại Bước 2 và lưu lại.
+
+Bước 3: Tắt tunnel tạm
+
+Đóng cửa sổ đang chạy lệnh cloudflared tunnel --url http://localhost:3000. Nếu không thấy cửa sổ, mở Task Manager và kết thúc cloudflared.exe có lệnh --url. Không tắt cái chạy dạng service, vì đó là tunnel chính.
+
+Kiểm tra
+
+Đợi 1–2 phút rồi dùng điện thoại mở https://quanlyvukhi.anhtruyen.com/w/ed2eca7dce0ee0edad7a7cc4 (đây là tem của QRCB-001). Nếu hiện thông tin súng mà không hỏi đăng nhập là đã xong. Tem đã in không cần in lại.
+
+Làm xong bạn nhắn tôi, tôi sẽ kiểm tra lại từ bên ngoài.
+
+✻ Cogitated for 11s · done 1:56 PM
+
+❯ ở lúc thêm vũ khí Đơn vị quản lý thì có list trung đội giờ hãy đưa nó vô db để admin có thể thêm xóa. tạm thời ban đầu sẽ là Đại đội 7 Đại đội 8 Đại đội 9 T

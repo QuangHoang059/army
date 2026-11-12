@@ -9,7 +9,7 @@ import { WeaponEditDialog } from '@/components/WeaponEditDialog';
 import { PageTitle, QrCode, StatusBadge, card, inputCls, labelCls } from '@/components/ui';
 import { api } from '@/lib/api';
 import { addDays, dayOffset, daysUntil, fmtDate } from '@/lib/date';
-import { MAINT_INTERVAL_DAYS, STATUSES, UNITS, type Weapon } from '@/lib/types';
+import { MAINT_INTERVAL_DAYS, STATUSES, type Weapon } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 
 const RETIRED = 'Đã thanh lý';
@@ -19,14 +19,14 @@ const EMPTY_FORM = {
   name: 'Súng tiểu liên STV380',
   serial: '',
   type: 'STV380',
-  unit: 'Trung đội 1',
+  unit: '',
   responsible: '',
   status: 'Tốt' as Weapon['status'],
   last: dayOffset(0),
 };
 
 export default function WeaponsPage() {
-  const { weapons, types, busy, run, setFlash } = useData();
+  const { weapons, types, units, busy, run, setFlash } = useData();
   const { isAdmin } = useAuth();
   const [q, setQ] = useState('');
   const [unit, setUnit] = useState('Tất cả');
@@ -52,6 +52,11 @@ export default function WeaponsPage() {
   useEffect(() => {
     if (types.length && !types.some((t) => t.name === form.type)) setForm((f) => ({ ...f, type: types[0].name }));
   }, [types, form.type]);
+  useEffect(() => {
+    if (units.length && !units.some((u) => u.name === form.unit)) setForm((f) => ({ ...f, unit: units[0].name }));
+  }, [units, form.unit]);
+  // Bộ lọc: đơn vị trong danh mục + đơn vị cũ còn gán trên vũ khí (đã xoá khỏi danh mục)
+  const unitFilter = [...new Set([...units.map((u) => u.name), ...weapons.map((w) => w.unit)])];
 
   const next = useMemo(() => addDays(form.last, MAINT_INTERVAL_DAYS), [form.last]);
 
@@ -135,10 +140,15 @@ export default function WeaponsPage() {
             />
           </label>
           <label className={labelCls}>
-            Đơn vị quản lý
+            <span className="flex items-baseline justify-between gap-2">
+              Đơn vị quản lý
+              <Link href="/admin/units" className="text-xs font-semibold text-[var(--green)] underline">
+                Sửa danh sách đơn vị
+              </Link>
+            </span>
             <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className={inputCls}>
-              {UNITS.map((u) => (
-                <option key={u}>{u}</option>
+              {units.map((u) => (
+                <option key={u.id}>{u.name}</option>
               ))}
             </select>
           </label>
@@ -212,7 +222,7 @@ export default function WeaponsPage() {
         </label>
         <select value={unit} onChange={(e) => setUnit(e.target.value)} className="rounded-xl border p-3 font-semibold">
           <option>Tất cả</option>
-          {UNITS.map((u) => (
+          {unitFilter.map((u) => (
             <option key={u}>{u}</option>
           ))}
         </select>

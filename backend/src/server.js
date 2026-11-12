@@ -1,7 +1,7 @@
 import './env.js';
 import express from 'express';
 import cors from 'cors';
-import { db, UPLOAD_DIR, weaponTypeNames } from './db.js';
+import { db, UPLOAD_DIR, weaponTypeNames, unitNames } from './db.js';
 import { seed } from './seed.js';
 import { ah } from './utils.js';
 import * as constants from './constants.js';
@@ -9,11 +9,14 @@ import { authenticate, ensureAdmin, loginRedirect, requireAdmin, requireAuth } f
 import auth from './routes/auth.js';
 import users from './routes/users.js';
 import weaponTypes from './routes/types.js';
+import units from './routes/units.js';
 import weapons from './routes/weapons.js';
 import maintenance from './routes/maintenance.js';
 import loans from './routes/loans.js';
 import stats from './routes/stats.js';
 import system from './routes/system.js';
+import publicRoutes from './routes/public.js';
+import reports from './routes/reports.js';
 import { startAutoBackup } from './backup.js';
 
 ensureAdmin();
@@ -27,6 +30,7 @@ app.use(authenticate);
 // ---- Không cần đăng nhập ----
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', auth);
+app.use('/api/public', publicRoutes); // trang tem QR công khai — chỉ thông tin 1 vũ khí
 
 // ---- Ảnh vũ khí: cần đăng nhập. Tên file có timestamp nên cache lâu được (private: không cho proxy dùng chung) ----
 app.use(
@@ -42,7 +46,7 @@ app.use(
 app.get('/api/meta', requireAuth, (req, res) =>
   res.json({
     types: weaponTypeNames(),
-    units: constants.UNITS,
+    units: unitNames(),
     statuses: constants.WEAPON_STATUSES,
     maintResults: constants.MAINT_RESULTS,
     loanPurposes: constants.LOAN_PURPOSES,
@@ -52,9 +56,11 @@ app.get('/api/meta', requireAuth, (req, res) =>
 );
 app.use('/api/users', requireAdmin, users);
 app.use('/api/weapon-types', weaponTypes);
+app.use('/api/units', units);
 app.use('/api/weapons', weapons);
 app.use('/api/maintenance', requireAuth, maintenance);
 app.use('/api/loans', requireAuth, loans);
+app.use('/api/reports', requireAuth, reports); // báo cáo tuần / tháng + xuất Excel
 app.use('/api', requireAdmin, system); // /api/audit, /api/backups
 app.use('/api', requireAuth, stats);
 

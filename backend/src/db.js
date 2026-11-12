@@ -2,7 +2,7 @@ import { BACKEND_DIR } from './env.js';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_WEAPON_TYPES } from './constants.js';
+import { DEFAULT_WEAPON_TYPES, UNITS } from './constants.js';
 
 export const DB_PATH = path.resolve(BACKEND_DIR, process.env.DB_PATH || './data/army.db');
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
@@ -130,6 +130,24 @@ export const findWeaponTypeRow = (name) =>
 /** Trả về tên loại đúng như trong danh mục, hoặc undefined. */
 export const findWeaponType = (name) => findWeaponTypeRow(name)?.name;
 
+// ---- Danh mục đơn vị quản lý (admin thêm / đổi tên / xoá ở trang "Đơn vị") ----
+db.exec(`
+CREATE TABLE IF NOT EXISTS units (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+// Lần đầu tạo bảng: nạp danh sách mặc định (constants.UNITS). Đơn vị cũ đang gán cho vũ khí vẫn giữ nguyên trên vũ khí đó.
+if (db.prepare('SELECT COUNT(*) AS n FROM units').get().n === 0) {
+  const ins = db.prepare('INSERT OR IGNORE INTO units (name) VALUES (?)');
+  db.transaction(() => UNITS.forEach((u) => ins.run(u)))();
+}
+/** Tên các đơn vị trong danh mục (theo thứ tự tạo). */
+export const unitNames = () => db.prepare('SELECT name FROM units ORDER BY id').pluck().all();
+/** Đơn vị trùng tên (không phân biệt hoa thường, kể cả chữ có dấu) → { id, name }, hoặc undefined. */
+export const findUnitRow = (name) => db.prepare('SELECT id, name FROM units').all().find((u) => typeKey(u.name) === typeKey(name));
+
 // ---- Thư mục lưu ảnh vũ khí ----
 export const UPLOAD_DIR = path.resolve(BACKEND_DIR, process.env.UPLOAD_DIR || path.join(path.dirname(DB_PATH), 'uploads'));
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -160,6 +178,7 @@ export const mapWeapon = (r) =>
     retired: !!r.retired_at,
     retiredAt: r.retired_at || null,
     retiredReason: r.retired_reason || null,
+    publicToken: r.public_token || null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -206,3 +225,14 @@ export const LOAN_SELECT = `
 
 // ---- Migration: phiên hiệu đơn vị riêng cho từng tài khoản (hiện trên đầu trang) ----
 addColumns('users', [['unit_label', "TEXT NOT NULL DEFAULT ''"]]);
+
+// ---- Migration: mã bí mật cho link công khai trên tem QR (/w/<token>) ----
+// Ngẫu nhiên 96 bit → không đoán / dò lần lượt được như QRCB-001, 002...
+// Trigger tự cấp mã cho vũ khí mới thêm; đổi mã QRCB không làm đổi link (không cần in lại tem).
+addColumns('weapons', [['public_token', 'TEXT']]);
+db.exec(`
+  UPDATE weapons SET public_token = lower(hex(randomblob(12))) WHERE public_token IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS weapons_public_token ON weapons(public_token);
+  CREATE TRIGGER IF NOT EXISTS weapons_public_token_ins AFTER INSERT ON weapons WHEN NEW.public_token IS NULL
+  BEGIN UPDATE weapons SET public_token = lower(hex(randomblob(12))) WHERE id = NEW.id; END;
+`);

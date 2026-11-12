@@ -28,6 +28,16 @@
     --red-soft: #3d1717;
     --amber-soft: #3d2c12;
   }
+  /* Chữ màu đậm (xanh/đỏ/vàng) không đọc được trên nền tối → làm sáng, trừ chỗ nền trắng */
+  :root .text-\[var\(--green\)\]:not(.bg-white) {
+    color: #4ade80;
+  }
+  :root .text-\[var\(--red\)\]:not(.bg-white) {
+    color: #f87171;
+  }
+  :root .text-\[var\(--amber\)\]:not(.bg-white) {
+    color: #fbbf24;
+  }
 }
 
 @layer base {
