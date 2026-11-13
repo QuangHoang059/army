@@ -1,4 +1,11 @@
-export type WeaponStatus = 'Tốt' | 'Đang bảo dưỡng' | 'Hỏng' | 'Đang mượn';
+export type WeaponStatus =
+  | 'Tốt'
+  | 'Đang bảo dưỡng'
+  | 'Phân cấp 2'
+  | 'Phân cấp 3'
+  | 'Phân cấp 4'
+  | 'Phân cấp 5'
+  | 'Đang mượn';
 export type LoanStatus = 'Đang mượn' | 'Đã trả';
 
 export interface Weapon {
@@ -49,6 +56,8 @@ export interface Loan {
   status: LoanStatus;
   recordedBy?: string | null;
   returnedBy?: string | null;
+  /** Hẹn giờ trả (YYYY-MM-DDTHH:MM) — rỗng nếu không hẹn */
+  dueAt?: string;
 }
 
 export interface ReportGroup {
@@ -118,15 +127,54 @@ export interface Stats {
   borrowed: number;
   soon: number;
   over: number;
+  /** Phiếu mượn quá giờ hẹn trả */
+  loansOverdue?: number;
   byType: { type: string; count: number }[];
 }
 
 export interface Alerts {
   overdue: Weapon[];
   soon: Weapon[];
+  loansOverdue?: Loan[];
 }
 
-export const STATUSES: WeaponStatus[] = ['Tốt', 'Đang bảo dưỡng', 'Hỏng', 'Đang mượn'];
+/** Một đợt kiểm đếm bằng quét QR */
+export interface Check {
+  id: number;
+  note: string;
+  unit: string;
+  startedAt: string;
+  finishedAt: string | null;
+  startedBy: string;
+  finishedBy: string | null;
+  total: number;
+  checked: number;
+  /** chưa quét nhưng đang cho mượn */
+  borrowed: number;
+  missing: number;
+}
+export interface CheckItem {
+  weaponId: number;
+  code: string;
+  name: string;
+  serial: string;
+  type: string;
+  unit: string;
+  responsible: string;
+  status: WeaponStatus;
+  statusAtStart: WeaponStatus;
+  checkedAt: string | null;
+  method: 'qr' | 'tay' | null;
+  checkedBy: string | null;
+}
+export interface CheckDetail extends Check {
+  items: CheckItem[];
+}
+
+export const GRADES: WeaponStatus[] = ['Phân cấp 2', 'Phân cấp 3', 'Phân cấp 4', 'Phân cấp 5'];
+export const STATUSES: WeaponStatus[] = ['Tốt', 'Đang bảo dưỡng', ...GRADES, 'Đang mượn'];
+/** Chỉ được xuất kho cho mượn khi ở các tình trạng này */
+export const LOANABLE_STATUSES: WeaponStatus[] = ['Tốt', 'Phân cấp 2'];
 export const MAINT_RESULTS = ['Đạt', 'Đang theo dõi', 'Chưa đạt'];
 export const LOAN_PURPOSES = ['Gác', 'Huấn luyện', 'Diễn tập', 'Nhiệm vụ khác'];
 export const MAINT_INTERVAL_DAYS = 30;
@@ -152,7 +200,7 @@ export interface WeaponType {
 }
 
 /** Tình trạng vũ khí khi nhận lại sau mượn */
-export const RETURN_WEAPON_STATUSES: WeaponStatus[] = ['Tốt', 'Đang bảo dưỡng', 'Hỏng'];
+export const RETURN_WEAPON_STATUSES: WeaponStatus[] = ['Tốt', 'Đang bảo dưỡng', ...GRADES];
 
 /** 1 dòng nhật ký thao tác */
 export interface AuditEntry {
@@ -172,4 +220,25 @@ export interface Backup {
   createdAt: string;
   size: number;
   photos: number;
+}
+
+/** 1 tin nhắn giữa 2 tài khoản */
+export interface Message {
+  id: number;
+  fromId: number;
+  toId: number;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/** 1 người trong danh bạ nhắn tin */
+export interface Contact {
+  id: number;
+  username: string;
+  fullName: string;
+  role: Role;
+  unitLabel: string;
+  unread: number;
+  last: { body: string; createdAt: string; mine: boolean } | null;
 }

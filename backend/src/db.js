@@ -212,6 +212,7 @@ export const mapLoan = (r) =>
     status: r.status,
     recordedBy: r.recorded_by || null,
     returnedBy: r.returned_by || null,
+    dueAt: r.due_at || '',
     createdAt: r.created_at,
   };
 
@@ -235,4 +236,46 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS weapons_public_token ON weapons(public_token);
   CREATE TRIGGER IF NOT EXISTS weapons_public_token_ins AFTER INSERT ON weapons WHEN NEW.public_token IS NULL
   BEGIN UPDATE weapons SET public_token = lower(hex(randomblob(12))) WHERE id = NEW.id; END;
+`);
+
+// ---- Migration: bỏ tình trạng "Hỏng", thay bằng phân cấp chất lượng (Phân cấp 2–5) ----
+db.prepare("UPDATE weapons SET status = 'Phân cấp 5', updated_at = datetime('now') WHERE status = 'Hỏng'").run();
+
+// ---- Migration: hẹn giờ trả cho phiếu mượn (quá giờ → cảnh báo) ----
+addColumns('loans', [['due_at', 'TEXT']]);
+
+// ---- Kiểm đếm vũ khí bằng quét QR: mỗi đợt kiểm đếm + danh sách vũ khí tại thời điểm bắt đầu ----
+db.exec(`
+CREATE TABLE IF NOT EXISTS checks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  note TEXT NOT NULL DEFAULT '',
+  unit TEXT NOT NULL DEFAULT '',
+  started_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  finished_at TEXT,
+  started_by TEXT,
+  finished_by TEXT
+);
+CREATE TABLE IF NOT EXISTS check_items (
+  check_id INTEGER NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
+  weapon_id INTEGER NOT NULL REFERENCES weapons(id),
+  status_at_start TEXT NOT NULL,
+  checked_at TEXT,
+  method TEXT,
+  checked_by TEXT,
+  PRIMARY KEY (check_id, weapon_id)
+);
+`);
+
+// ---- Tin nhắn giữa các tài khoản (xoá tài khoản → xoá luôn tin nhắn của tài khoản đó) ----
+db.exec(`
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  to_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  read_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(from_id, to_id, id);
+CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(to_id, read_at);
 `);

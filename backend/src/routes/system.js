@@ -4,6 +4,8 @@ import path from 'node:path';
 import { db } from '../db.js';
 import { audit } from '../audit.js';
 import { BACKUP_DIR, backupNow, listBackups } from '../backup.js';
+import { encryptBackupDir } from '../backup-crypto.js';
+import { HttpError } from '../utils.js';
 import { ah, str } from '../utils.js';
 
 const r = Router();
@@ -53,6 +55,24 @@ r.post('/backups', ah(async (req, res) => {
   const b = await backupNow('manual');
   audit(req.user, 'backup.create', b.name, `Sao lưu dữ liệu: ${path.join(BACKUP_DIR, b.name)}`);
   res.status(201).json(b);
+}));
+
+// POST /api/backups/:name/export { password } → tải file .vkbak đã mã hoá AES-256 (chép USB / nộp cấp trên)
+r.post('/backups/:name/export', ah(async (req, res) => {
+  const b = listBackups().find((x) => x.name === req.params.name);
+  if (!b) throw new HttpError(404, 'Không tìm thấy bản sao lưu.');
+  let buf;
+  try {
+    buf = encryptBackupDir(path.join(BACKUP_DIR, b.name), str(req.body?.password));
+  } catch (e) {
+    throw new HttpError(400, e.message);
+  }
+  audit(req.user, 'backup.export', b.name, `Tải bản sao lưu mã hoá ${b.name}.vkbak`);
+  res
+    .set('Content-Type', 'application/octet-stream')
+    .set('Content-Disposition', `attachment; filename="VKTB_${b.name}.vkbak"`)
+    .set('Cache-Control', 'no-store')
+    .send(buf);
 }));
 
 export default r;

@@ -17,12 +17,16 @@ import stats from './routes/stats.js';
 import system from './routes/system.js';
 import publicRoutes from './routes/public.js';
 import reports from './routes/reports.js';
+import checks from './routes/checks.js';
+import messages from './routes/messages.js';
 import { startAutoBackup } from './backup.js';
+import { ipGuard } from './ipguard.js';
 
 ensureAdmin();
 
 const app = express();
 app.set('trust proxy', 'loopback'); // Next.js dev/rewrite chạy cùng máy → lấy đúng IP người dùng cho chống dò mật khẩu
+app.use(ipGuard); // chỉ IP trong ALLOWED_IPS (mạng quân sự) mới vào được — đặt trước mọi route
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || true, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
 app.use(authenticate);
@@ -61,8 +65,10 @@ app.use('/api/weapons', weapons);
 app.use('/api/maintenance', requireAuth, maintenance);
 app.use('/api/loans', requireAuth, loans);
 app.use('/api/reports', requireAuth, reports); // báo cáo tuần / tháng + xuất Excel
+app.use('/api/checks', requireAuth, checks); // kiểm đếm bằng quét QR
+app.use('/api/messages', requireAuth, messages); // nhắn tin giữa các tài khoản
+app.use('/api', requireAuth, stats); // /api/stats, /api/alerts — đặt TRƯỚC system (system chặn non-admin cho mọi /api/...)
 app.use('/api', requireAdmin, system); // /api/audit, /api/backups
-app.use('/api', requireAuth, stats);
 
 // Nạp dữ liệu mẫu (chỉ khi DB trống) — admin
 app.post('/api/seed', requireAdmin, ah((req, res) => res.status(201).json(seed())));

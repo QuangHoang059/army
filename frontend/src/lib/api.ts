@@ -1,7 +1,8 @@
-import type { Alerts, AuditEntry, Backup, Loan, Maintenance, PublicWeapon, Report, Role, Stats, User, Weapon, WeaponDetail, WeaponType } from './types';
+import type { Alerts, AuditEntry, Check, CheckDetail, CheckItem, Backup, Contact, Loan, Message, Maintenance, PublicWeapon, Report, Role, Stats, User, Weapon, WeaponDetail, WeaponType } from './types';
 
 /** Phát ra khi API trả 401 (phiên hết hạn / bị khoá) → AuthProvider đưa về trang đăng nhập. */
 export const AUTH_EXPIRED_EVENT = 'auth:expired';
+export const IP_BLOCKED = 'IpBlocked';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
@@ -17,7 +18,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (res.status === 401 && !path.startsWith('/auth/')) window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || `Không kết nối được máy chủ (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(data?.error || `Không kết nối được máy chủ (${res.status})`);
+    // Máy ngoài dải IP được phép (mạng quân sự) → AuthProvider hiện màn hình chặn
+    if (data?.code === 'ip_blocked') err.name = IP_BLOCKED;
+    throw err;
+  }
   return data as T;
 }
 
@@ -91,9 +97,26 @@ export const api = {
     post<Maintenance>('/maintenance', m),
 
   loans: (status?: string) => request<Loan[]>(`/loans${status ? `?status=${encodeURIComponent(status)}` : ''}`),
-  createLoan: (l: { weaponCode: string; borrower: string; purpose: string; borrowAt: string }) =>
+  createLoan: (l: { weaponCode: string; borrower: string; purpose: string; borrowAt: string; dueAt?: string }) =>
     post<Loan>('/loans', l),
   returnLoan: (id: number, b: { returnAt: string; returnStatus: string; weaponStatus: string }) => post<Loan>(`/loans/${id}/return`, b),
+
+  // ---- Kiểm đếm bằng quét QR ----
+  checks: () => request<Check[]>('/checks'),
+  check: (id: number) => request<CheckDetail>(`/checks/${id}`),
+  startCheck: (b: { unit?: string; note?: string }) => post<Check>('/checks', b),
+  checkScan: (id: number, key: string, method: 'qr' | 'tay' = 'qr') =>
+    post<{ item: CheckItem; already: boolean }>(`/checks/${id}/scan`, { key, method }),
+  checkUncheck: (id: number, weaponId: number) => post<{ ok: true }>(`/checks/${id}/uncheck`, { weaponId }),
+  finishCheck: (id: number) => post<Check>(`/checks/${id}/finish`, {}),
+  deleteCheck: (id: number) => del(`/checks/${id}`),
+
+  // ---- Tin nhắn ----
+  contacts: () => request<Contact[]>('/messages/contacts'),
+  unreadMessages: () => request<{ unread: number }>('/messages/unread'),
+  conversation: (userId: number, after = 0) =>
+    request<{ items: Message[]; seenUpTo: number }>(`/messages/with/${userId}${after ? `?after=${after}` : ''}`),
+  sendMessage: (toId: number, body: string) => post<Message>('/messages', { toId, body }),
 
   // ---- Nhật ký & sao lưu (admin) ----
   audit: (f: { q?: string; action?: string; before?: number; limit?: number } = {}) => {
@@ -104,6 +127,24 @@ export const api = {
   },
   backups: () => request<{ dir: string; items: Backup[] }>('/backups'),
   createBackup: () => post<Backup>('/backups', {}),
+  /** Tải bản sao lưu mã hoá (.vkbak) về máy */
+  exportBackup: async (name: string, password: string) => {
+    const res = await fetch(`/api/backups/${encodeURIComponent(name)}/export`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password }),
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || `Không tải được (${res.status})`);
+    const file = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `${name}.vkbak`;
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: file });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return file;
+  },
 
   seed: () => post<{ weapons: number; maintenance: number; loans: number }>('/seed', {}),
 };

@@ -7,9 +7,20 @@ import { useData } from '@/components/DataProvider';
 import { PageTitle, StatusBadge, card, inputCls, labelCls } from '@/components/ui';
 import { api } from '@/lib/api';
 import { dateTimeOffset, daysUntil, fmtDateTime } from '@/lib/date';
-import { LOAN_PURPOSES, RETURN_WEAPON_STATUSES, type Loan } from '@/lib/types';
+import { LOAN_PURPOSES, LOANABLE_STATUSES, RETURN_WEAPON_STATUSES, type Loan } from '@/lib/types';
 
-const empty = () => ({ weaponCode: '', borrower: '', purpose: 'Gác', borrowAt: dateTimeOffset(0) });
+const empty = () => ({ weaponCode: '', borrower: '', purpose: 'Gác', borrowAt: dateTimeOffset(0), dueAt: '' });
+
+/** Cộng giờ vào chuỗi YYYY-MM-DDTHH:MM (giờ máy) */
+function plusHours(s: string, h: number) {
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setMinutes(d.getMinutes() + h * 60);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+const isLate = (l: Loan, now: string) => l.status === 'Đang mượn' && !!l.dueAt && !!now && l.dueAt < now;
 
 export default function LoansPage() {
   return (
@@ -30,8 +41,24 @@ function Loans() {
     if (w) setForm((f) => ({ ...f, weaponCode: w }));
   }, [params]);
 
+  // Từ trang Quét QR / Cảnh báo bấm "Ghi trả" (?return=QRCB-xxx) → mở luôn hộp ghi trả của phiếu đang mượn
+  const returnCode = params.get('return');
+  useEffect(() => {
+    if (!returnCode) return;
+    const l = loans.find((x) => x.status === 'Đang mượn' && x.weaponCode === returnCode.toUpperCase());
+    if (l) setReturning(l);
+  }, [returnCode, loans]);
+
+  const [now, setNow] = useState('');
+  useEffect(() => {
+    const t = () => setNow(dateTimeOffset(0));
+    t();
+    const id = window.setInterval(t, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   // Chỉ cho xuất kho vũ khí "Tốt" và chưa quá hạn bảo dưỡng (backend cũng kiểm tra lại).
-  const available = useMemo(() => weapons.filter((w) => w.status === 'Tốt' && daysUntil(w.next) >= 0), [weapons]);
+  const available = useMemo(() => weapons.filter((w) => LOANABLE_STATUSES.includes(w.status) && daysUntil(w.next) >= 0), [weapons]);
   const borrowed = loans.filter((l) => l.status === 'Đang mượn');
 
   const submit = async () => {
@@ -39,7 +66,7 @@ function Loans() {
       setFlash({ kind: 'error', text: 'Chọn vũ khí và nhập người mượn.' });
       return;
     }
-    const r = await run(() => api.createLoan(form), (l) => `Đã ghi mượn ${l.weaponName} (${l.weaponCode}) cho ${l.borrower}.`);
+    const r = await run(() => api.createLoan({ ...form, dueAt: form.dueAt || undefined }), (l) => `Đã ghi mượn ${l.weaponName} (${l.weaponCode}) cho ${l.borrower}.`);
     if (r) setForm(empty());
   };
 
@@ -62,6 +89,12 @@ function Loans() {
                 <div className="text-sm">
                   {l.borrower} • {l.purpose} • Mượn {fmtDateTime(l.borrowAt)}
                 </div>
+                {l.dueAt && (
+                  <div className={`text-sm ${isLate(l, now) ? 'font-bold text-[var(--red)]' : 'text-[var(--muted)]'}`}>
+                    Hẹn trả {fmtDateTime(l.dueAt)}
+                    {isLate(l, now) && ' — QUÁ GIỜ CHƯA TRẢ'}
+                  </div>
+                )}
               </div>
               <button
                 disabled={busy}
@@ -119,6 +152,39 @@ function Loans() {
             className={inputCls}
           />
         </label>
+        <div className="md:col-span-2">
+          <label className={labelCls}>
+            Hẹn giờ trả (không bắt buộc — quá giờ sẽ hiện cảnh báo)
+            <input
+              type="datetime-local"
+              value={form.dueAt}
+              min={form.borrowAt}
+              onChange={(e) => setForm({ ...form, dueAt: e.target.value })}
+              className={inputCls}
+            />
+          </label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {[2, 4, 8, 24].map((h) => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => setForm({ ...form, dueAt: plusHours(form.borrowAt, h) })}
+                className="rounded-lg border px-3 py-1.5 text-xs font-bold hover:border-[var(--green)]"
+              >
+                +{h} giờ
+              </button>
+            ))}
+            {form.dueAt && (
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, dueAt: '' })}
+                className="px-2 text-xs font-bold text-[var(--muted)] underline"
+              >
+                Không hẹn
+              </button>
+            )}
+          </div>
+        </div>
         <button
           disabled={busy}
           type="submit"
@@ -139,6 +205,7 @@ function Loans() {
               </div>
               <div className="text-xs text-[var(--muted)]">
                 Mượn: {fmtDateTime(l.borrowAt)}{' '}
+                {l.dueAt && `• Hẹn trả: ${fmtDateTime(l.dueAt)} `}
                 {l.returnAt ? `• Trả: ${fmtDateTime(l.returnAt)} — ${l.returnStatus}` : '• Chưa trả'}
               </div>
               {(l.recordedBy || l.returnedBy) && (
@@ -149,6 +216,9 @@ function Loans() {
                 </div>
               )}
             </div>
+            {isLate(l, now) && (
+              <span className="rounded-full bg-[var(--red)] px-2 py-1 text-xs font-bold text-white">Quá giờ trả</span>
+            )}
             <StatusBadge s={l.status} />
             {l.status === 'Đang mượn' && (
               <button

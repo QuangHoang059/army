@@ -13,6 +13,7 @@ const GROUPS: [string, string][] = [
   ['weapon', 'Vũ khí (thêm / sửa / thanh lý / ảnh)'],
   ['maint', 'Bảo dưỡng'],
   ['loan', 'Mượn - trả'],
+  ['check', 'Kiểm đếm'],
   ['type', 'Loại trang bị'],
   ['user', 'Tài khoản'],
   ['auth', 'Đăng nhập / đổi mật khẩu'],
@@ -31,6 +32,9 @@ const ACTION_LABEL: Record<string, string> = {
   'maint.create': 'Ghi bảo dưỡng',
   'loan.create': 'Ghi mượn',
   'loan.return': 'Ghi trả',
+  'check.start': 'Bắt đầu kiểm đếm',
+  'check.finish': 'Kết thúc kiểm đếm',
+  'check.delete': 'Xoá đợt kiểm đếm',
   'type.create': 'Thêm loại',
   'type.rename': 'Đổi tên loại',
   'type.delete': 'Xoá loại',
@@ -43,6 +47,7 @@ const ACTION_LABEL: Record<string, string> = {
   'auth.login': 'Đăng nhập',
   'auth.password': 'Đổi mật khẩu',
   'backup.create': 'Sao lưu',
+  'backup.export': 'Tải bản mã hoá',
 };
 
 const fmtAt = (iso: string) =>

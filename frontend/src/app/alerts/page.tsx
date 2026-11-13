@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useData } from '@/components/DataProvider';
 import { PageTitle } from '@/components/ui';
-import { daysUntil, fmtDate } from '@/lib/date';
+import { daysUntil, fmtDate, fmtDateTime } from '@/lib/date';
 import type { Weapon } from '@/lib/types';
 
 export default function AlertsPage() {
@@ -11,7 +11,40 @@ export default function AlertsPage() {
 
   return (
     <section>
-      <PageTitle title="Cảnh báo bảo dưỡng" sub="Theo dõi vũ khí sắp đến hạn trong 7 ngày và vũ khí đã quá hạn." />
+      <PageTitle
+        title="Cảnh báo"
+        sub="Vũ khí mượn quá giờ hẹn trả, vũ khí quá hạn và sắp đến hạn bảo dưỡng (7 ngày)."
+      />
+
+      {(alerts.loansOverdue?.length || 0) > 0 && (
+        <div className="mt-4 rounded-2xl border-2 border-[var(--red)] bg-[var(--red-soft)] p-4">
+          <h2 className="font-display text-lg font-bold uppercase text-[var(--red)]">
+            Mượn quá giờ chưa trả — {alerts.loansOverdue!.length} vũ khí
+          </h2>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {alerts.loansOverdue!.map((l) => (
+              <div key={l.id} className="rounded-xl bg-[var(--surface)] p-3">
+                <div className="flex justify-between gap-2">
+                  <b>{l.weaponName}</b>
+                  <span className="text-xs text-[var(--muted)]">{l.weaponCode}</span>
+                </div>
+                <div className="text-sm">
+                  {l.borrower} • {l.purpose}
+                </div>
+                <div className="text-sm font-bold text-[var(--red)]">
+                  Hẹn trả {fmtDateTime(l.dueAt)} • Mượn {fmtDateTime(l.borrowAt)}
+                </div>
+                <Link
+                  href={`/loans?return=${l.weaponCode}`}
+                  className="mt-2 inline-block rounded-lg bg-[var(--green)] px-3 py-2 text-sm font-bold text-white"
+                >
+                  Ghi trả
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 rounded-2xl border-2 border-[var(--red)] bg-[var(--red-soft)] p-4">
         <h2 className="font-display text-lg font-bold uppercase text-[var(--red)]">

@@ -20,6 +20,11 @@ export function dateTimeOffset(days, hour = 7) {
   return `${todayStr(d)}T${pad(hour)}:15`;
 }
 
+/** Bây giờ (giờ máy chủ), dạng YYYY-MM-DDTHH:MM. */
+export function nowLocal(d = new Date()) {
+  return `${todayStr(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 /** Add days to a YYYY-MM-DD string (timezone-safe). */
 export function addDays(dateStr, days) {
   const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);

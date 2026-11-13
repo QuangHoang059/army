@@ -7,7 +7,10 @@ import type { Weapon, WeaponStatus } from '@/lib/types';
 const STATUS_CLS: Record<string, string> = {
   'Tốt': 'bg-[var(--green-soft)] text-[var(--green)] border-green-600',
   'Đang bảo dưỡng': 'bg-[var(--amber-soft)] text-[var(--amber)] border-amber-600',
-  'Hỏng': 'bg-[var(--red-soft)] text-[var(--red)] border-red-600',
+  'Phân cấp 2': 'bg-teal-50 text-teal-700 border-teal-500',
+  'Phân cấp 3': 'bg-orange-50 text-orange-700 border-orange-500',
+  'Phân cấp 4': 'bg-[var(--red-soft)] text-[var(--red)] border-red-600',
+  'Phân cấp 5': 'bg-red-800 text-white border-red-900',
   'Đang mượn': 'bg-blue-50 text-blue-700 border-blue-500',
   'Đã trả': 'bg-gray-100 text-gray-700 border-gray-400',
   'Đã thanh lý': 'bg-gray-200 text-gray-600 border-gray-500',
@@ -30,7 +33,7 @@ type QrInfo = Pick<Weapon, 'code' | 'name' | 'serial' | 'type' | 'unit' | 'respo
  * Có host thật → đặt NEXT_PUBLIC_SITE_URL (vd https://kho.example.vn) trong frontend/.env.local.
  * Tạm thời: lấy theo địa chỉ đang mở app (mở bằng IP LAN, vd http://192.168.1.10:3000, thì điện thoại cùng wifi mở được).
  */
-function useSiteUrl() {
+export function useSiteUrl() {
   const [url, setUrl] = useState(process.env.NEXT_PUBLIC_SITE_URL || '');
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_SITE_URL) setUrl(window.location.origin);

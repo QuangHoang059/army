@@ -26,7 +26,7 @@ export function buildSeed() {
 
   for (let n = 1; n <= 16; n++)
     add('Súng tiểu liên STV380', 'STV380', n <= 6 ? 'Trung đội 1' : n <= 11 ? 'Trung đội 2' : 'Trung đội 3', n,
-      n === 4 ? 'Đang bảo dưỡng' : n === 7 ? 'Đang mượn' : n === 11 ? 'Hỏng' : 'Tốt',
+      n === 4 ? 'Đang bảo dưỡng' : n === 7 ? 'Đang mượn' : n === 11 ? 'Phân cấp 4' : 'Tốt',
       n === 4 ? 2 : n === 5 ? -2 : n === 6 ? 5 : n === 11 ? 28 : n === 15 ? 6 : 24, -28);
   for (let n = 17; n <= 20; n++)
     add('Kính ngắm trực tiếp', 'Kính trực tiếp', n === 17 ? 'Trung đội 1' : n === 18 ? 'Trung đội 2' : 'Trung đội 3', n,

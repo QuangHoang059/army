@@ -1,0 +1,64 @@
+
+A. Web còn thiếu so với thuyết minh
+
+┌─────┬─────────────────────────────────────┬───────────────────────────────────────────────┬───────────────────────────┐
+│  #  │          Thuyết minh viết           │                 Web hiện tại                  │          Mức độ           │
+├─────┼─────────────────────────────────────┼───────────────────────────────────────────────┼───────────────────────────┤
+│     │ Kiểm đếm bằng quét QR: "hệ thống tự │ Chưa có. Quét QR chỉ để xem thông tin. Chưa   │ Thiếu lớn nhất. Đây là    │
+│ 1   │  động tích đã kiểm đếm" (Bước 2 mục │ có phiên kiểm đếm, danh sách đã/chưa quét,    │ con số chính đưa ra trước │
+│     │  IV, Phụ lục 1); "5 phút cho 40 đầu │ hay biên bản kiểm đếm                         │  Hội đồng (40 phút xuống  │
+│     │  VKTB"                              │                                               │ 5 phút)                   │
+├─────┼─────────────────────────────────────┼───────────────────────────────────────────────┼───────────────────────────┤
+│ 2   │ "Quét QR để mượn, quét QR để trả"   │ Quét ra súng đang mượn thì không có nút "Ghi  │ Nên thêm                  │
+│     │                                     │ trả", phải sang trang Mượn - Trả để tìm       │                           │
+├─────┼─────────────────────────────────────┼───────────────────────────────────────────────┼───────────────────────────┤
+│     │                                     │ Có danh sách đang mượn, nhưng phiếu mượn      │                           │
+│ 3   │ "Nếu chưa trả, phần mềm tự động báo │ không có giờ hẹn trả, nên không cảnh báo được │ Nên thêm                  │
+│     │  đỏ"                                │  súng mượn quá giờ. Trang Cảnh báo mới chỉ    │                           │
+│     │                                     │ cảnh báo bảo dưỡng                            │                           │
+├─────┼─────────────────────────────────────┼───────────────────────────────────────────────┼───────────────────────────┤
+│ 4   │ Tem 2×2 cm (báng súng) và 4×4 cm    │ Chỉ in được từng tem một, không chọn được cỡ, │ Nên thêm                  │
+│     │ (tủ súng, hòm đạn)                  │  không in cả trang tem                        │                           │
+├─────┼─────────────────────────────────────┼───────────────────────────────────────────────┼───────────────────────────┤
+│     │ "Sao lưu định kỳ bằng file mã hóa", │ Sao lưu tự động mỗi 24 giờ có rồi, nhưng file │                           │
+│ 5   │  bàn giao bằng "file sao lưu + mật  │  không mã hóa                                 │ Cần làm nếu giữ câu này   │
+│     │ khẩu"                               │                                               │                           │
+├─────┼─────────────────────────────────────┼───────────────────────────────────────────────┼───────────────────────────┤
+│ 6   │ Phụ lục 3: AK-47, RPK, B40, Đại     │ Danh mục loại chưa có các loại này. Admin tự  │ Nhỏ                       │
+│     │ liên                                │ thêm được ở trang "Loại trang bị"             │                           │
+└─────┴─────────────────────────────────────┴───────────────────────────────────────────────┴───────────────────────────┘
+
+Những phần khớp: Dashboard (tổng số, đang dùng, sắp hạn, quá hạn), danh sách có tìm kiếm và lọc, thẻ chi tiết kèm ảnh và lịch sử, sổ bảo dưỡng tự cộng 30 ngày và cảnh báo trước 7 ngày, sổ mượn - trả, báo cáo tuần/tháng xuất Excel.
+
+B. Thuyết minh còn thiếu hoặc mâu thuẫn với web
+
+Mâu thuẫn nghiêm trọng (Hội đồng dễ hỏi vặn):
+1. "Chạy hoàn toàn offline, không kết nối Internet, không lưu trên server nước ngoài": thực tế web đang công khai trên Internet qua Cloudflare Tunnel tại quanlyvukhi.anhtruyen.com, và dữ liệu đi qua Cloudflare là dịch vụ nước ngoài. Có hai cách:
+   - Đổi cách triển khai thành chỉ chạy mạng nội bộ (LAN, wifi đơn vị).
+   - Hoặc viết lại mục VI cho đúng thực tế.
+2. "Mã QR chỉ chứa QRCB-xxx, người ngoài quét không đọc được gì nếu không có mật khẩu": thực tế tem chứa đường link, và trang công khai hiện tên súng, số hiệu, đơn vị, người phụ trách mà không cần đăng nhập (bạn yêu cầu như vậy). Ví dụ ở mục 3.2 "QRCB-001 – STV380 – Số hiệu VN-001 – Trung đội 2" cũng ngược với câu "không chứa thông tin nhạy cảm". Phải thống nhất: hoặc tắt trang công khai, hoặc sửa thuyết minh.
+3. Lưu ý kỹ thuật nếu chuyển sang offline (LAN): trình duyệt điện thoại chỉ cho mở camera trên https. Chạy LAN bằng http://192.168… thì nút quét trong app sẽ không mở được camera. Khi đó cần chứng chỉ nội bộ, hoặc quét bằng app camera của điện thoại.
+
+Thiếu nội dung:
+4. Mục lục ghi "Phụ lục: Bảng so sánh" nhưng không có bảng nào. Mục V cũng mở đầu "Ngoài hiệu quả định lượng…" mà chưa nêu số liệu định lượng. Cần một bảng so sánh trước và sau: thời gian kiểm đếm, thời gian chuẩn bị khi kiểm tra, số súng quá hạn bảo dưỡng, thời gian lập báo cáo, kinh phí.
+5. Chưa nêu nhiều chức năng web đã có, vốn làm mục VI mạnh hơn:
+- Phân quyền admin/người dùng; tài khoản chỉ admin cấp.
+- Chống dò mật khẩu.
+- Nhật ký thao tác (ai sửa gì, lúc nào).
+- Sao lưu tự động hằng ngày, giữ 30 bản.
+- Thanh lý vũ khí vẫn giữ lịch sử.
+- Danh mục loại và đơn vị tự sửa được (đúng ý mục VII "chỉ cần thay tên loại").
+6. Không có hình minh họa phần mềm. Hội đồng thường cần ảnh chụp Dashboard, màn quét, thẻ chi tiết, file Excel.
+7. Hướng phát triển (1) "in tem QR tự động" thì web đã có nút In tem, nên đổi thành "in tem hàng loạt" hoặc đưa vào phần đã làm.
+
+Lỗi hình thức:
+8. Tên đơn vị lẫn lộn: bìa ghi "Đại đội 7 – Tiểu đoàn 3", nhưng mục I và VIII ghi "Đại đội 1". Mục 3.3b ghi "lọc theo Trung đội" trong khi web giờ lọc theo đơn vị (Đại đội 7/8/9…).
+9. "Quãng Ngãi" sai chính tả, đúng là "Quảng Ngãi".
+10. Còn chỗ trống "……": tác giả, chức vụ, tháng thực hiện, tháng áp dụng thử.
+11. Các con số như "sau 3 tháng… sai sót bằng 0, không còn súng quá hạn" phải đúng với thời gian áp dụng thật. Dữ liệu trong web mới bắt đầu từ tháng 11/2026, nên cần ghi đúng hoặc lấy số liệu thật từ trang Báo cáo và Nhật ký.
+
+Đề xuất thứ tự làm
+
+1. Chốt mục 1–2 phần B: chạy offline (LAN) hay tiếp tục qua Internet, và giữ hay tắt trang công khai. Phần web và thuyết minh đều phụ thuộc vào quyết định này.
+2. Thêm vào web chức năng Kiểm đếm bằng quét QR, sau đó là Ghi trả ngay khi quét, cảnh báo mượn quá giờ, in tem hàng loạt 2×2 / 4×4 cm.
+3. Sau đó tôi có thể sửa file .docx: thêm bảng so sánh, mục chức năng bảo mật, ảnh chụp màn hình phần mềm, và sửa các lỗi ở mục 8–10.

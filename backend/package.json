@@ -10,7 +10,8 @@
     "seed:reset": "node src/seed.js --reset",
     "db:clear": "node src/clear.js",
     "backup": "node src/backup.js",
-    "restore": "node src/restore.js"
+    "restore": "node src/restore.js",
+    "decrypt-backup": "node src/decrypt-backup.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

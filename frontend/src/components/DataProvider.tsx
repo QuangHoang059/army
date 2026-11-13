@@ -38,7 +38,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [types, setTypes] = useState<WeaponType[]>([]);
   const [units, setUnits] = useState<WeaponType[]>([]);
-  const [alerts, setAlerts] = useState<Alerts>({ overdue: [], soon: [] });
+  const [alerts, setAlerts] = useState<Alerts>({ overdue: [], soon: [], loansOverdue: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

@@ -4,7 +4,10 @@ export const SOON_THRESHOLD_DAYS = 7;
 // Chỉ dùng để khởi tạo bảng weapon_types lần đầu — sau đó admin quản lý danh mục loại trên giao diện.
 export const DEFAULT_WEAPON_TYPES =['STV380', 'K54', 'Kính trực tiếp', 'Kính gián tiếp', 'Thước góc bắn', 'Nivo con cóc', 'Lựu đạn', 'Ống nhòm', 'Máy thông tin'];
 export const UNITS =['Đại đội 7', 'Đại đội 8', 'Đại đội 9', 'Tiểu đoàn 3'];
-export const WEAPON_STATUSES = ['Tốt', 'Đang bảo dưỡng', 'Hỏng', 'Đang mượn'];
+// Phân cấp chất lượng: Tốt (cấp 1) … Phân cấp 5. Chỉ "Tốt" và "Phân cấp 2" được xuất kho cho mượn.
+export const GRADES = ['Phân cấp 2', 'Phân cấp 3', 'Phân cấp 4', 'Phân cấp 5'];
+export const WEAPON_STATUSES = ['Tốt', 'Đang bảo dưỡng', ...GRADES, 'Đang mượn'];
+export const LOANABLE_STATUSES = ['Tốt', 'Phân cấp 2'];
 export const MAINT_RESULTS = ['Đạt', 'Đang theo dõi', 'Chưa đạt'];
 export const LOAN_PURPOSES = ['Gác', 'Huấn luyện', 'Diễn tập', 'Nhiệm vụ khác'];
 export const LOAN_STATUSES = ['Đang mượn', 'Đã trả'];

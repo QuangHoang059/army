@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   ArrowLeftRight,
+  ClipboardCheck,
   CheckCircle2,
   Building2,
   Database,
@@ -13,7 +14,11 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
+  ChevronDown,
+  ShieldCheck,
+  MessageSquare,
   Package,
+  Printer,
   QrCode,
   RefreshCw,
   Shield,
@@ -32,10 +37,13 @@ const NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/weapons', label: 'Vũ khí - Trang bị', icon: Package },
   { href: '/scan', label: 'Quét QR', icon: QrCode },
+  { href: '/inventory', label: 'Kiểm đếm', icon: ClipboardCheck },
+  { href: '/labels', label: 'In tem QR', icon: Printer },
   { href: '/maintenance', label: 'Sổ Bảo dưỡng', icon: Wrench },
   { href: '/loans', label: 'Bàn giao / Mượn - Trả', icon: ArrowLeftRight },
   { href: '/alerts', label: 'Cảnh báo', icon: TriangleAlert },
   { href: '/reports', label: 'Báo cáo - Thống kê', icon: FileSpreadsheet },
+  { href: '/messages', label: 'Tin nhắn', icon: MessageSquare },
   { href: '/admin/types', label: 'Loại trang bị', icon: Tags, admin: true },
   { href: '/admin/units', label: 'Đơn vị quản lý', icon: Building2, admin: true },
   { href: '/admin/users', label: 'Tài khoản', icon: UserCog, admin: true },
@@ -55,9 +63,71 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const alertCount = (stats?.over || 0) + (stats?.soon || 0);
+  // Số tin nhắn chưa đọc: hỏi lại mỗi 15 giây + khi trang tin nhắn báo đã đọc
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const tick = () =>
+      api
+        .unreadMessages()
+        .then((r) => alive && setUnread(r.unread))
+        .catch(() => {});
+    tick();
+    const t = setInterval(tick, 15000);
+    window.addEventListener('messages:read', tick);
+    return () => {
+      alive = false;
+      clearInterval(t);
+      window.removeEventListener('messages:read', tick);
+    };
+  }, [user]);
+
+  // Nhóm "Quản trị": tự mở khi đang ở trang admin, nhớ trạng thái mở/đóng trên máy này
+  const onAdminPage = pathname.startsWith('/admin');
+  const [adminOpen, setAdminOpen] = useState(false);
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem('nav:adminOpen');
+    } catch {}
+    setAdminOpen(onAdminPage || saved === '1');
+  }, [onAdminPage]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('nav:adminOpen', adminOpen ? '1' : '0');
+    } catch {}
+  }, [adminOpen]);
+
+  const navLink = ({ href, label, icon: Icon }: (typeof NAV)[number]) => {
+    const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+    return (
+      <Link
+        key={href}
+        href={href}
+        className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm font-bold ${
+          active
+            ? 'border-[var(--green)] bg-[var(--green)] text-white shadow'
+            : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--green)]'
+        }`}
+      >
+        <Icon size={19} />
+        {label}
+        {href === '/messages' && unread > 0 && (
+          <span className="ml-auto rounded-full bg-[var(--red)] px-2 py-0.5 text-[11px] text-white">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+        {href === '/alerts' && alertCount > 0 && (
+          <span className="ml-auto rounded-full bg-[var(--red)] px-2 py-0.5 text-[11px] text-white">{alertCount}</span>
+        )}
+      </Link>
+    );
+  };
+
+  const alertCount = (stats?.over || 0) + (stats?.soon || 0) + (stats?.loansOverdue || 0);
   // Trang quản trị / tài khoản vẫn dùng được khi chưa có vũ khí nào
-  const settingsPage = pathname.startsWith('/admin') || pathname === '/account';
+  const settingsPage = pathname.startsWith('/admin') || pathname === '/account' || pathname === '/messages';
   const empty = !loading && !error && weapons.length === 0 && !settingsPage;
 
   return (
@@ -108,29 +178,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)] gap-4 px-3 py-4 sm:px-5 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="min-w-0 lg:sticky lg:top-[92px] lg:self-start">
           <nav className="tab-scroll flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
-            {NAV.filter((n) => !n.admin || isAdmin).map(({ href, label, icon: Icon }) => {
-              const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm font-bold ${
-                    active
-                      ? 'border-[var(--green)] bg-[var(--green)] text-white shadow'
-                      : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--green)]'
-                  }`}
-                >
-                  <Icon size={19} />
-                  {label}
-                  {href === '/alerts' && alertCount > 0 && (
-                    <span className="ml-auto rounded-full bg-[var(--red)] px-2 py-0.5 text-[11px] text-white">
-                      {alertCount}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+            {NAV.filter((n) => !n.admin).map((n) => navLink(n))}
           </nav>
+          {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setAdminOpen((o) => !o)}
+                aria-expanded={adminOpen}
+                className={`mt-2 flex w-full items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left text-sm font-bold lg:py-3 ${
+                  onAdminPage
+                    ? 'border-[var(--gold)] bg-[var(--gold)] text-black shadow'
+                    : 'border-[var(--gold)] bg-[var(--surface)] hover:bg-[var(--green-soft)]'
+                }`}
+              >
+                <ShieldCheck size={19} />
+                Quản trị (Admin)
+                <ChevronDown size={16} className={`ml-auto transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
+              </button>
+          )}
+          {isAdmin && adminOpen && (
+            <div className="mt-2 rounded-xl border-2 border-[var(--gold)] bg-[var(--surface)] p-2">
+              <p className="px-1 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                Chỉ tài khoản Admin thấy mục này
+              </p>
+              <div className="tab-scroll flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+                {NAV.filter((n) => n.admin).map((n) => navLink(n))}
+              </div>
+            </div>
+          )}
           <div className="mt-3 hidden rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 lg:block">
             <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Quy định nhanh</p>
             <ul className="mt-2 space-y-2 text-[13px] leading-snug">
@@ -206,7 +281,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className={empty ? 'mt-4' : ''}>{children}</div>
           )}
 
-          <footer className="mt-6 border-t pt-4 text-center text-xs text-[var(--muted)]">
+          <footer className="no-print mt-6 border-t pt-4 text-center text-xs text-[var(--muted)]">
             {user?.unitLabel ? `${user.unitLabel} • ` : ''}Quản lý Vũ khí - Trang bị bằng mã QR • Bảo dưỡng định kỳ 30 ngày
           </footer>
         </main>
