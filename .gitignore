@@ -4,3 +4,5 @@ backend/data/
 backend/backups/
 .env
 .env.local
+dist/
+installer/tunnel-token.txt

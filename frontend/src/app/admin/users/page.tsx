@@ -32,6 +32,17 @@ function Users() {
     load();
   }, [load]);
 
+  // Quay lại tab này (sau khi xoá ở tab khác) → tải lại để không còn dòng tài khoản đã bị xoá
+  useEffect(() => {
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [load]);
+
   /** Chạy thao tác rồi tải lại danh sách tài khoản. */
   const act = async <T,>(fn: () => Promise<T>, msg: string | ((r: T) => string)) => {
     const r = await run(fn, msg);

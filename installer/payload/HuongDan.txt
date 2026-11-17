@@ -1,0 +1,31 @@
+QUAN LY VU KHI - HUONG DAN CAI DAT MAY CHU
+==========================================
+
+CAI DAT (chay tai cho - khong chep sang thu muc khac)
+  1. Giai nen thu muc nay vao NOI DAT CO DINH tren may chu (vd D:\QuanLyVuKhi).
+     Chuong trinh chay ngay tai thu muc do -> dung xoa / di chuyen thu muc sau khi cai.
+     Khong can cai Node.js.
+  2. Chuot phai CaiDat.bat > Run as administrator.
+     - Tu lay dai mang cua card mang dau tien (vd 192.168.1.0/24) ghi vao ALLOWED_IPS
+       (chi dinh tay: CaiDat.bat -AllowedIps "10.0.0.0/8, 192.168.10.0/24")
+     - Tu chay khi bat may: backend :4000, giao dien :3000
+     - Cai dich vu cloudflared (tunnel) bang tunnel-token.txt (bo qua: -NoTunnel)
+  3. Mo http://localhost:3000  (may khac trong mang: http://<IP may chu>:3000)
+
+CAP NHAT BAN MOI
+  1. Chay GoCaiDat.bat (giu du lieu) de dung chuong trinh.
+  2. Giai nen ban moi DE LEN cung thu muc (du lieu app\backend\data, backups, .env giu nguyen).
+  3. Chay lai CaiDat.bat.
+
+QUAN LY
+  Log:           logs\backend.log, frontend.log, install.log
+  Cau hinh:      app\backend\.env  (sua xong: khoi dong lai tac vu)
+  Khoi dong lai: (PowerShell admin)
+      Stop-ScheduledTask QuanLyVuKhi-Backend;  Start-ScheduledTask QuanLyVuKhi-Backend
+      Stop-ScheduledTask QuanLyVuKhi-Frontend; Start-ScheduledTask QuanLyVuKhi-Frontend
+  Tunnel:        Get-Service Cloudflared  /  Restart-Service Cloudflared
+  Doi lai ALLOWED_IPS theo mang hien tai: chay lai CaiDat.bat
+
+GO CAI DAT
+  GoCaiDat.bat              (go dich vu, xoa file chuong trinh, giu du lieu)
+  GoCaiDat.bat -RemoveData  (xoa ca du lieu - KHONG khoi phuc duoc) -> sau do xoa ca thu muc

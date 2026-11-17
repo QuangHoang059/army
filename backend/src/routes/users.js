@@ -85,7 +85,8 @@ r.put('/:id', ah((req, res) => {
 // DELETE /api/users/:id
 r.delete('/:id', ah((req, res) => {
   const cur = getUser(req.params.id);
-  if (!cur) throw new HttpError(404, 'Không tìm thấy tài khoản.');
+  // Không có trong CSDL = đã bị xoá trước đó (thường do danh sách trên màn hình còn dòng cũ) → nhắc tải lại
+  if (!cur) throw new HttpError(404, 'Tài khoản này không còn trong hệ thống — có thể đã bị xoá ở tab khác. Hãy tải lại trang rồi kiểm tra lại.');
   if (cur.id === req.user.id) throw new HttpError(400, 'Không thể tự xoá tài khoản đang đăng nhập.');
   if (cur.role === 'admin' && cur.active && activeAdmins() <= 1) throw new HttpError(400, 'Phải còn ít nhất 1 admin đang hoạt động.');
   db.prepare('DELETE FROM users WHERE id = ?').run(cur.id); // sessions xoá theo ON DELETE CASCADE

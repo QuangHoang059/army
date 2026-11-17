@@ -29,6 +29,14 @@ app.set('trust proxy', 'loopback'); // Next.js dev/rewrite chạy cùng máy →
 app.use(ipGuard); // chỉ IP trong ALLOWED_IPS (mạng quân sự) mới vào được — đặt trước mọi route
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || true, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
+// API trả dữ liệu sống theo từng tài khoản → cấm mọi tầng đệm lưu lại.
+// (Nếu không, Cloudflare/tunnel sẽ trả JSON cũ: xoá tài khoản rồi mà danh sách vẫn còn.)
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 app.use(authenticate);
 
 // ---- Không cần đăng nhập ----
