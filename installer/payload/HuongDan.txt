@@ -6,9 +6,10 @@ CAI DAT (chay tai cho - khong chep sang thu muc khac)
      Chuong trinh chay ngay tai thu muc do -> dung xoa / di chuyen thu muc sau khi cai.
      Khong can cai Node.js.
   2. Chuot phai CaiDat.bat > Run as administrator.
-     - Tu lay dai mang cua card mang dau tien (vd 192.168.1.0/24) ghi vao ALLOWED_IPS
-       (chi dinh tay: CaiDat.bat -AllowedIps "10.0.0.0/8, 192.168.10.0/24")
-     - Tu chay khi bat may: backend :4000, giao dien :3000
+     - ALLOWED_IPS: lan cai dau tu lay dai mang cua card mang dau tien (vd 192.168.1.0/24).
+       Cai lai / cap nhat: GIU NGUYEN ALLOWED_IPS dang co trong app\backend\.env.
+       (ghi de: CaiDat.bat -AllowedIps "10.0.0.0/8, 192.168.10.0/24")
+     - Chay backend :4000, giao dien :3000 (KHONG tu chay khi bat may, KHONG tu khoi dong lai)
      - Cai dich vu cloudflared (tunnel) bang tunnel-token.txt (bo qua: -NoTunnel)
   3. Mo http://localhost:3000  (may khac trong mang: http://<IP may chu>:3000)
 
@@ -19,12 +20,14 @@ CAP NHAT BAN MOI
 
 QUAN LY
   Log:           logs\backend.log, frontend.log, install.log
-  Cau hinh:      app\backend\.env  (sua xong: khoi dong lai tac vu)
-  Khoi dong lai: (PowerShell admin)
-      Stop-ScheduledTask QuanLyVuKhi-Backend;  Start-ScheduledTask QuanLyVuKhi-Backend
-      Stop-ScheduledTask QuanLyVuKhi-Frontend; Start-ScheduledTask QuanLyVuKhi-Frontend
-  Tunnel:        Get-Service Cloudflared  /  Restart-Service Cloudflared
-  Doi lai ALLOWED_IPS theo mang hien tai: chay lai CaiDat.bat
+  Chay / CHAY LAI: ChayApp.bat   (dung ban dang chay roi mo lai backend + giao dien)
+  Dung:           DungApp.bat    (hoac dong 2 cua so "QLVK Backend" / "QLVK Giao dien")
+  Bat may xong:   phai tu chay ChayApp.bat (khong tu chay).
+  Cau hinh:       app\backend\.env  (sua xong: chay lai ChayApp.bat)
+  Bi chan IP:     trang bao loi hien "IP ..." -> them dung IP/dai do vao ALLOWED_IPS.
+                  Luu y: dien thoai/mang co IPv6 thi IP hien ra la IPv6 (vd 2401:d800:...),
+                  them IPv4 (113.185...) se KHONG co tac dung. Xem them logs\backend.log.
+  Tunnel:         Get-Service Cloudflared  /  Restart-Service Cloudflared
 
 GO CAI DAT
   GoCaiDat.bat              (go dich vu, xoa file chuong trinh, giu du lieu)

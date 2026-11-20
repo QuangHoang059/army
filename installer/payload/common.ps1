@@ -14,10 +14,13 @@ function Assert-Admin {
 
 # Dung ung dung: chi dung dung cac tien trinh cua ban cai dat nay
 # (node.exe nam trong <InstallDir>\runtime va cmd.exe dang chay run-*.cmd cua <InstallDir>).
+#  Dong thoi GO tac vu tu chay khi bat may cua ban cu (ban moi chay tay bang ChayApp.bat).
 function Stop-App([string]$Dir) {
+    $Dir = [IO.Path]::GetFullPath($Dir).TrimEnd('\')
     foreach ($t in $TaskNames) {
         if (Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue) {
             Stop-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
+            Unregister-ScheduledTask -TaskName $t -Confirm:$false -ErrorAction SilentlyContinue
         }
     }
     $node = Join-Path $Dir 'runtime\node.exe'

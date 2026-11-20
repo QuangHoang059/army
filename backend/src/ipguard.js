@@ -17,8 +17,17 @@ for (const item of ALLOWED) {
     console.warn(`[ALLOWED_IPS] Bỏ qua giá trị không hợp lệ: "${item}"`);
     continue;
   }
-  if (bits === undefined) list.addAddress(ip, type);
-  else list.addSubnet(ip, Number(bits), type);
+  if (bits === undefined) {
+    list.addAddress(ip, type);
+    continue;
+  }
+  const n = Number(bits);
+  const max = type === 'ipv6' ? 128 : 32;
+  if (!Number.isInteger(n) || n < 0 || n > max) {
+    console.warn(`[ALLOWED_IPS] Bỏ qua "${item}": IPv${type === 'ipv6' ? '6' : '4'} chỉ cho phép /0 đến /${max}.`);
+    continue;
+  }
+  list.addSubnet(ip, n, type);
 }
 
 /** Chuẩn hoá IP từ Express ("::ffff:10.1.2.3" → "10.1.2.3"). */
@@ -39,7 +48,13 @@ export function ipGuard(req, res, next) {
   const now = Date.now();
   if ((warned.get(ip) || 0) < now - 3600_000) {
     warned.set(ip, now);
-    console.warn(`[ALLOWED_IPS] Chặn truy cập từ ${ip} → ${req.method} ${req.originalUrl}`);
+    const fwd = req.headers['x-forwarded-for'];
+    const cf = req.headers['cf-connecting-ip'];
+    console.warn(
+      `[ALLOWED_IPS] Chặn truy cập từ ${ip} → ${req.method} ${req.originalUrl}` +
+        (fwd ? ` | x-forwarded-for: ${fwd}` : '') +
+        (cf ? ` | cf-connecting-ip: ${cf}` : ''),
+    );
   }
   res.status(403).json({
     error: `Máy của bạn (IP ${ip}) không thuộc mạng được phép truy cập hệ thống. Liên hệ quản trị viên đơn vị.`,

@@ -24,7 +24,7 @@ try {
     Write-Step 'Xoa file chuong trinh'
     foreach ($p in 'app\frontend', 'runtime', 'bin', 'app\backend\src', 'app\backend\node_modules',
                    'app\backend\package.json', 'app\backend\package-lock.json',
-                   'run-backend.cmd', 'run-frontend.cmd', 'install.ps1', 'CaiDat.bat', 'HuongDan.txt', 'tunnel-token.txt') {
+                   'run-backend.cmd', 'run-frontend.cmd', 'ChayApp.bat', 'DungApp.bat', 'install.ps1', 'CaiDat.bat', 'HuongDan.txt', 'tunnel-token.txt') {
         $full = Join-Path $Dir $p
         if (Test-Path $full) { Remove-Item $full -Recurse -Force -ErrorAction SilentlyContinue }
     }
